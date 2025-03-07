@@ -4,16 +4,18 @@ import logging
 import json
 import datetime
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from config import MODEL_BASE_PATH, MODEL_DEVICE
-from app.dao.model_dao import ModelDAO
+from config.config import MODEL_BASE_PATH, MODEL_DEVICE
+from app.repositories.model_repository import ModelDAO
 
 logger = logging.getLogger(__name__)
 
 class ModelCoreOperations:
+    """模型核心操作类，负责模型的加载、推理、数据处理和保存等核心功能"""
     def __init__(self):
-        self.model = None
-        self.tokenizer = None
-        self.device = MODEL_DEVICE
+        """初始化模型核心操作类，设置模型、分词器和设备"""
+        self.model = None  # 语言模型实例
+        self.tokenizer = None  # 分词器实例
+        self.device = MODEL_DEVICE  # 模型运行的设备（CPU/GPU）
         
     def load_model(self, model_path):
         """Load model from specified path"""
@@ -200,7 +202,21 @@ class ModelCoreOperations:
             raise
 
     def _preprocess_data(self, data):
-        """Preprocess structured data (JSONL/CSV) with batch processing"""
+        """
+        预处理结构化数据（JSONL/CSV），使用批量处理
+        
+        参数:
+            data: 包含文本数据的结构化数据列表
+            
+        返回:
+            处理后的数据列表，包含input_ids、attention_mask和labels
+            
+        处理流程:
+        1. 验证数据格式，确保每个数据项都包含text字段
+        2. 将文本数据分批处理，避免内存问题
+        3. 使用分词器对文本进行动态填充和截断
+        4. 对部分数据进行随机掩码处理，用于数据增强
+        """
         if not self.tokenizer:
             raise ValueError('Tokenizer not loaded')
             
@@ -253,7 +269,21 @@ class ModelCoreOperations:
         return processed_data
 
     def _preprocess_text_data(self, text):
-        """Preprocess plain text data"""
+        """
+        预处理纯文本数据
+        
+        参数:
+            text: 原始文本字符串
+            
+        返回:
+            处理后的数据列表，包含input_ids、attention_mask和labels
+            
+        处理流程:
+        1. 使用分词器将文本编码为token序列
+        2. 将token序列切分为固定长度的chunk
+        3. 对每个chunk进行填充和截断处理
+        4. 返回处理后的数据列表
+        """
         if not self.tokenizer:
             raise ValueError('Tokenizer not loaded')
             
@@ -284,7 +314,22 @@ class ModelCoreOperations:
         return processed_data
 
     def _create_data_loader(self, dataset, batch_size):
-        """Create optimized data loader from dataset with enhanced parallel processing"""
+        """
+        创建优化的数据加载器，支持增强的并行处理
+        
+        参数:
+            dataset: 预处理后的数据集
+            batch_size: 每个batch的大小
+            
+        返回:
+            带有统计跟踪功能的数据加载器
+            
+        功能特点:
+        1. 使用自定义数据集类实现缓存优化
+        2. 根据系统资源动态计算最优的worker数量
+        3. 支持内存映射和持久化worker
+        4. 包含内存使用监控和统计功能
+        """
         try:
             logger.info(f'Creating data loader with batch size {batch_size}')
             
@@ -473,7 +518,21 @@ class ModelCoreOperations:
         return model_version
 
     def _validate_saved_model(self, model_path):
-        """Validate saved model integrity"""
+        """
+        验证保存的模型完整性
+        
+        参数:
+            model_path: 模型保存路径
+            
+        返回:
+            验证是否成功
+            
+        验证步骤:
+        1. 检查模型必需文件是否存在
+        2. 加载临时模型和分词器
+        3. 执行前向传播测试
+        4. 记录验证结果
+        """
         try:
             logger.info(f'Validating saved model at {model_path}')
             
@@ -504,7 +563,21 @@ class ModelCoreOperations:
             logger.error(f'Model validation failed: {str(e)}')
 
     def _apply_random_masking(self, input_ids, special_tokens_mask):
-        """Apply random masking and other data augmentation techniques"""
+        """
+        应用随机掩码和其他数据增强技术
+        
+        参数:
+            input_ids: 输入token的ID序列
+            special_tokens_mask: 特殊token的掩码
+            
+        返回:
+            应用随机掩码后的input_ids
+            
+        实现细节:
+        1. 创建非特殊token的掩码
+        2. 随机选择15%的非特殊token进行掩码
+        3. 返回处理后的input_ids
+        """
         # Create mask for non-special tokens
         mask = (special_tokens_mask == 0)
         mask_indices = torch.nonzero(mask).squeeze()

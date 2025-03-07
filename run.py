@@ -5,7 +5,7 @@
 
 import os
 from app import create_app
-from config import Config
+from config.config import Config
 
 # 创建Flask应用实例
 app = create_app(Config)

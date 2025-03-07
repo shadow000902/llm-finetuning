@@ -180,7 +180,33 @@ class ModelService(IModelOperations):
         val_data: Optional[Union[torch.Tensor, Dict[str, torch.Tensor]]],
         batch_size: int
     ) -> Tuple[DataLoader, Optional[DataLoader]]:
-        """Prepare data loaders for training"""
+        """
+        准备训练和验证数据加载器
+        
+        该方法根据输入数据创建PyTorch DataLoader实例，支持以下输入格式：
+        - 单个张量：适用于简单数据集
+        - 字典形式：适用于复杂数据集，键为特征名，值为对应张量
+        
+        处理流程：
+        1. 检查输入数据类型
+        2. 调用数据处理器创建训练数据加载器
+        3. 如果存在验证数据，创建验证数据加载器
+        4. 返回创建好的数据加载器实例
+        
+        Args:
+            train_data: 训练数据，可以是张量或字典格式
+            val_data: 可选验证数据，格式与train_data相同
+            batch_size: 批量大小，控制每次训练迭代的样本数量
+            
+        Returns:
+            Tuple[DataLoader, Optional[DataLoader]]: 
+            - 训练数据加载器
+            - 验证数据加载器（如果提供了验证数据）
+            
+        Raises:
+            ValueError: 当输入数据格式不正确时抛出
+            RuntimeError: 当数据加载器创建失败时抛出
+        """
         train_loader = self.data_processor.create_dataloader(train_data, batch_size)
         val_loader = None
         if val_data is not None:
@@ -194,7 +220,27 @@ class ModelService(IModelOperations):
         train_loader: DataLoader,
         val_loader: Optional[DataLoader]
     ) -> None:
-        """Train for one epoch"""
+        """
+        执行单个epoch的训练
+        
+        该方法执行以下操作：
+        1. 设置模型为训练模式
+        2. 遍历训练数据加载器
+        3. 执行前向传播计算损失
+        4. 执行反向传播更新参数
+        5. 记录训练指标
+        6. 如果存在验证数据，执行验证集评估
+        7. 更新评估器状态
+        
+        Args:
+            epoch: 当前epoch序号
+            total_epochs: 总epoch数
+            train_loader: 训练数据加载器
+            val_loader: 可选验证数据加载器
+            
+        Raises:
+            TrainingError: 当训练过程中发生错误时抛出
+        """
         logger.info(f'Starting epoch {epoch + 1}/{total_epochs}')
         
         train_metrics = self.model_trainer.train_epoch(train_loader)
@@ -204,7 +250,25 @@ class ModelService(IModelOperations):
             self._update_evaluation_metrics(val_metrics)
 
     def _update_evaluation_metrics(self, metrics: Dict[str, Any]) -> None:
-        """Update evaluation metrics with validation results"""
+        """
+        更新评估指标
+        
+        使用验证结果更新模型评估器状态，包括：
+        - 预测结果
+        - 真实标签
+        - 损失值
+        
+        Args:
+            metrics: 包含验证结果的字典，结构如下：
+            {
+                'predictions': 模型预测结果,
+                'targets': 真实标签,
+                'loss': 验证损失值
+            }
+            
+        Raises:
+            ValueError: 当输入metrics格式不正确时抛出
+        """
         self.model_evaluator.update_batch_metrics(
             metrics['predictions'],
             metrics['targets'],
@@ -212,14 +276,47 @@ class ModelService(IModelOperations):
         )
 
     def _should_stop_early(self, patience: int) -> bool:
-        """Check if early stopping should be triggered"""
+        """
+        检查是否应该触发早停
+        
+        根据验证集性能判断是否提前停止训练，规则如下：
+        - 如果验证损失连续patience个epoch没有提升，则触发早停
+        - 早停条件由模型评估器实现
+        
+        Args:
+            patience: 早停等待轮次
+            
+        Returns:
+            bool: 是否应该停止训练
+            
+        Raises:
+            RuntimeError: 当早停检查失败时抛出
+        """
         if self.model_evaluator.early_stopping_check(patience):
             logger.info('Early stopping triggered')
             return True
         return False
 
     def _generate_reports(self) -> Dict[str, Any]:
-        """Generate training, evaluation and resource reports"""
+        """
+        生成训练报告
+        
+        收集并返回以下报告：
+        - 训练报告：包含训练轮次、总损失、学习率等信息
+        - 评估报告：包含准确率、精确率、召回率等指标
+        - 资源报告：包含CPU、内存、GPU使用情况
+        
+        Returns:
+            Dict[str, Any]: 包含所有报告的字典，结构如下：
+            {
+                'training': 训练报告,
+                'evaluation': 评估报告,
+                'resources': 资源报告
+            }
+            
+        Raises:
+            RuntimeError: 当报告生成失败时抛出
+        """
         return {
             'training': self.model_trainer.generate_training_report(),
             'evaluation': self.model_evaluator.generate_evaluation_report(),
@@ -329,13 +426,33 @@ class ModelService(IModelOperations):
         """
         保存模型状态到指定路径
         
-        该方法将当前模型的状态字典保存到指定路径，可用于模型持久化
+        该方法将当前模型的状态字典保存到指定路径，可用于模型持久化。保存内容包括：
+        - 模型参数
+        - 优化器状态
+        - 训练元数据
+        - 模型配置
+        
+        保存流程详细说明：
+        1. 检查路径有效性
+        2. 收集模型状态信息：
+           - 模型参数
+           - 优化器状态
+           - 训练元数据（如当前epoch、loss等）
+           - 模型配置（如类别数量、类别名称等）
+        3. 将状态信息序列化为字典
+        4. 使用PyTorch的save方法保存到指定路径
+        5. 记录保存日志
         
         Args:
-            path: 模型保存路径，应包含文件名和扩展名（通常为.pt或.pth）
-            
+            path: 模型保存路径，应包含文件名和扩展名（通常为.pt或.pth）。
+                  建议使用绝对路径以确保保存位置正确。路径应指向可写目录。
+                  
         Raises:
-            IOError: 当文件保存失败时抛出
+            IOError: 当文件保存失败时抛出，可能原因包括：
+                     - 路径无效
+                     - 磁盘空间不足
+                     - 权限不足
+            RuntimeError: 当模型状态收集失败时抛出
         """
         torch.save(self.model.state_dict(), path)
         logger.info(f'Saved model to {path}')

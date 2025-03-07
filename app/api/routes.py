@@ -4,7 +4,7 @@ from datetime import datetime
 import jwt
 
 from app.api import bp
-from config import Config
+from config.config import Config
 
 def token_required(f):
     """Authentication decorator"""

@@ -5,7 +5,7 @@
 """
 
 from flask import Flask
-from config import DevelopmentConfig
+from config.config import DevelopmentConfig
 
 def create_app(config_class=DevelopmentConfig):
     """

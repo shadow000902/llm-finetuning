@@ -17,7 +17,16 @@ from collections import defaultdict
 logger = logging.getLogger(__name__)
 
 class ModelEvaluator:
+    """模型评估器，用于评估模型性能并跟踪评估指标"""
+    
     def __init__(self, num_classes: int, class_names: Optional[List[str]] = None):
+        """
+        初始化模型评估器
+        
+        Args:
+            num_classes (int): 类别数量
+            class_names (Optional[List[str]]): 类别名称列表，默认为数字编号
+        """
         self.num_classes = num_classes
         self.class_names = class_names or [str(i) for i in range(num_classes)]
         self.metrics_history = defaultdict(list)
@@ -33,7 +42,14 @@ class ModelEvaluator:
                            predictions: torch.Tensor,
                            targets: torch.Tensor,
                            loss: float) -> None:
-        """Update metrics with batch results"""
+        """
+        更新批次评估指标
+        
+        Args:
+            predictions (torch.Tensor): 模型预测结果
+            targets (torch.Tensor): 真实标签
+            loss (float): 当前批次的损失值
+        """
         if predictions.dim() > 1:
             predictions = torch.argmax(predictions, dim=1)
             
@@ -42,7 +58,18 @@ class ModelEvaluator:
         self.batch_losses.append(loss)
         
     def calculate_epoch_metrics(self) -> Dict[str, float]:
-        """Calculate and log metrics for completed epoch"""
+        """
+        计算并记录当前epoch的评估指标
+        
+        Returns:
+            Dict[str, float]: 包含各项评估指标的字典，包括：
+                - loss: 平均损失值
+                - accuracy: 准确率
+                - precision: 加权精确率
+                - recall: 加权召回率
+                - f1: 加权F1分数
+                - roc_auc: 二分类时的ROC AUC值
+        """
         if not self.batch_predictions:
             raise ValueError('No predictions available for evaluation')
             
@@ -75,7 +102,12 @@ class ModelEvaluator:
         return metrics
         
     def _log_confusion_matrix(self, cm: np.ndarray) -> None:
-        """Log confusion matrix with class names"""
+        """
+        记录混淆矩阵
+        
+        Args:
+            cm (np.ndarray): 混淆矩阵
+        """
         if len(self.class_names) != cm.shape[0]:
             logger.warning('Class names length does not match confusion matrix')
             return
@@ -90,11 +122,21 @@ class ModelEvaluator:
             logger.info(row_str)
             
     def get_metrics_history(self) -> Dict[str, List[float]]:
-        """Get complete metrics history"""
+        """
+        获取所有epoch的评估指标历史记录
+        
+        Returns:
+            Dict[str, List[float]]: 包含各项指标历史记录的字典
+        """
         return dict(self.metrics_history)
         
     def get_best_metrics(self) -> Dict[str, float]:
-        """Get best metrics across all epochs"""
+        """
+        获取所有epoch中的最佳评估指标
+        
+        Returns:
+            Dict[str, float]: 包含各项最佳指标的字典
+        """
         best_metrics = {}
         
         for metric, values in self.metrics_history.items():
@@ -108,7 +150,16 @@ class ModelEvaluator:
     def early_stopping_check(self,
                             patience: int = 5,
                             min_delta: float = 0.01) -> bool:
-        """Check if early stopping criteria is met"""
+        """
+        检查是否满足早停条件
+        
+        Args:
+            patience (int): 允许性能不提升的epoch数，默认为5
+            min_delta (float): 最小改进阈值，默认为0.01
+            
+        Returns:
+            bool: 是否满足早停条件
+        """
         if len(self.metrics_history['loss']) < patience + 1:
             return False
             
@@ -122,7 +173,16 @@ class ModelEvaluator:
         return False
         
     def generate_evaluation_report(self) -> Dict[str, any]:
-        """Generate comprehensive evaluation report"""
+        """
+        生成完整的评估报告
+        
+        Returns:
+            Dict[str, any]: 包含以下内容的评估报告：
+                - best_metrics: 最佳评估指标
+                - metrics_history: 评估指标历史记录
+                - num_classes: 类别数量
+                - class_names: 类别名称
+        """
         report = {
             'best_metrics': self.get_best_metrics(),
             'metrics_history': self.get_metrics_history(),
