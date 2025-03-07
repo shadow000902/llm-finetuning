@@ -6,6 +6,7 @@
 
 import os
 from dotenv import load_dotenv
+import torch
 
 # 加载环境变量
 load_dotenv()
@@ -26,6 +27,8 @@ class Config:
     
     # 模型存储配置
     MODEL_STORAGE_PATH = os.getenv('MODEL_STORAGE_PATH', './models')  # 模型文件存储路径
+    MODEL_BASE_PATH = "/path/to/your/model/base"
+    MODEL_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     
     # 训练配置
     MAX_TRAINING_THREADS = int(os.getenv('MAX_TRAINING_THREADS', 4))  # 最大并行训练线程数

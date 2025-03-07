@@ -121,3 +121,22 @@ class IDataProcessor(ABC):
             >>> processor.load_processor("processor_state.pkl")
         """
         pass
+
+    @abstractmethod
+    def load_dataset(self, path: str) -> Union[pd.DataFrame, Dict[str, any]]:
+        """加载数据集
+        
+        Args:
+            path: 数据集路径
+            
+        Returns:
+            加载的数据集，支持DataFrame或字典格式
+            
+        Raises:
+            IOError: 当文件加载失败时抛出
+            ValueError: 当路径无效或数据格式不支持时抛出
+            
+        Example:
+            >>> dataset = processor.load_dataset("data.csv")
+        """
+        pass

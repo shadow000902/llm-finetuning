@@ -175,15 +175,57 @@ A: 可以使用以下指标：
 ## 项目结构
 ```
 .
+├── .env                  # 环境变量配置文件
+├── .gitignore            # Git忽略文件配置
+├── README.md             # 项目说明文档
+├── requirements.txt      # Python依赖文件
+├── run.py                # 项目启动脚本
 ├── app/                  # 应用核心代码
+│   ├── __init__.py       # 应用初始化
 │   ├── api/              # API接口
+│   │   ├── __init__.py   # API模块初始化
+│   │   └── routes.py     # API路由配置
 │   ├── core/             # 核心业务逻辑
+│   │   ├── factories/    # 工厂模式实现
+│   │   │   └── service_factory.py  # 服务工厂
+│   │   ├── interfaces/   # 接口定义
+│   │   │   ├── data_processing.py  # 数据处理接口
+│   │   │   ├── model_operations.py # 模型操作接口
+│   │   │   └── training.py         # 训练接口
+│   │   └── services/     # 服务实现
+│   │       ├── data_service.py      # 数据服务
+│   │       ├── model_service.py     # 模型服务
+│   │       ├── training_service.py  # 训练服务
+│   │       └── model_components/    # 模型组件
+│   │           ├── __init__.py      # 组件初始化
+│   │           ├── data_processing.py  # 数据处理组件
+│   │           ├── model_evaluation.py # 模型评估组件
+│   │           ├── model_inference.py  # 模型推理组件
+│   │           ├── model_training.py   # 模型训练组件
+│   │           └── resource_monitoring.py  # 资源监控组件
 │   ├── model/            # 模型相关实现
+│   │   ├── __init__.py   # 模型模块初始化
+│   │   ├── core_operations.py  # 核心操作
+│   │   ├── training_service.py # 训练服务
+│   │   └── implementations/    # 具体实现
+│   ├── repositories/     # 数据仓库
+│   │   └── model_repository.py # 模型仓库
 │   └── utils/            # 工具类
+│       └── validation.py # 验证工具
 ├── config/               # 配置文件
-├── tests/                # 测试代码
-├── requirements.txt      # 依赖文件
-└── run.py                # 启动脚本
+│   └── config.py         # 配置管理
+├── instance/             # 实例相关文件
+└── tests/                # 测试代码
+    ├── integration/      # 集成测试
+    │   ├── test_data_pipeline.py    # 数据管道测试
+    │   └── test_model_integration.py # 模型集成测试
+    ├── unit/             # 单元测试
+    │   ├── test_core_operations.py  # 核心操作测试
+    │   ├── test_data_service.py     # 数据服务测试
+    │   ├── test_model_service.py    # 模型服务测试
+    │   └── test_training_service.py # 训练服务测试
+    └── test_data/        # 测试数据
+        └── test_data.csv # 测试数据集
 ```
 
 ## 开发环境配置

@@ -3,6 +3,52 @@ from typing import Dict, List, Optional, Union
 import torch
 import numpy as np
 
+class IModelOperations(ABC):
+    """模型操作接口，定义模型训练、评估、预测等核心操作"""
+    @abstractmethod
+    def train(self,
+             train_data: Union[torch.Tensor, Dict[str, torch.Tensor]],
+             val_data: Optional[Union[torch.Tensor, Dict[str, torch.Tensor]]] = None,
+             epochs: int = 10,
+             batch_size: int = 32,
+             learning_rate: float = 0.001,
+             early_stopping_patience: int = 5) -> Dict[str, any]:
+        """训练模型"""
+        pass
+
+    @abstractmethod
+    def evaluate(self,
+                data: Union[torch.Tensor, Dict[str, torch.Tensor]],
+                batch_size: int = 32) -> Dict[str, any]:
+        """评估模型性能"""
+        pass
+
+    @abstractmethod
+    def predict(self,
+               inputs: Union[torch.Tensor, Dict[str, torch.Tensor]],
+               batch_size: int = 32,
+               return_probs: bool = False) -> np.ndarray:
+        """模型推理"""
+        pass
+
+    @abstractmethod
+    def save_model(self, path: str) -> None:
+        """保存模型状态"""
+        pass
+
+    @abstractmethod
+    def load_model(self, path: str) -> None:
+        """加载模型状态"""
+        pass
+
+    @abstractmethod
+    def generate_text(self,
+                     prompt: str,
+                     max_length: int = 50,
+                     temperature: float = 0.7) -> str:
+        """文本生成"""
+        pass
+
 class IModelService(ABC):
     """模型服务接口，定义模型操作的标准方法
     

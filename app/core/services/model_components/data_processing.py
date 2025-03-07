@@ -7,7 +7,7 @@ import datetime
 import psutil
 import platform
 from transformers import AutoTokenizer
-from config import MODEL_BASE_PATH
+from config.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ class DataProcessing:
             if not os.path.isfile(data_path):
                 raise ValueError(f'Data path {data_path} is not a file')
                 
-            cache_dir = os.path.join(MODEL_BASE_PATH, 'cache')
+            cache_dir = os.path.join(Config.MODEL_BASE_PATH, 'cache')
             os.makedirs(cache_dir, exist_ok=True)
             os.chmod(cache_dir, 0o755)
             
@@ -320,7 +320,6 @@ class DataProcessing:
         """预处理结构化数据（JSONL/CSV），支持批量处理
         
         该方法负责对结构化数据进行预处理，包括数据清洗、格式转换等操作。
-        具体实现委托给ModelCoreOperations类完成。
         
         Args:
             data (list): 需要预处理的数据列表，每个元素为一个字典
@@ -329,9 +328,10 @@ class DataProcessing:
             list: 预处理后的数据列表
             
         实现细节：
-        1. 调用ModelCoreOperations的预处理方法
-        2. 支持批量处理，提高效率
-        3. 保持数据一致性
+        1. 验证数据格式，确保每个数据项都包含text字段
+        2. 将文本数据分批处理，避免内存问题
+        3. 使用分词器对文本进行动态填充和截断
+        4. 对部分数据进行随机掩码处理，用于数据增强
         
         示例:
             >>> processed_data = processor._preprocess_data(raw_data)
@@ -341,14 +341,61 @@ class DataProcessing:
         - 批量处理减少IO开销
         - 内存高效的数据处理方式
         """
-        from app.model.core_operations import ModelCoreOperations
-        return ModelCoreOperations()._preprocess_data(data)
+        if not self.tokenizer:
+            raise ValueError('Tokenizer not loaded')
+            
+        # Validate data
+        if not all('text' in item for item in data):
+            raise ValueError('All data items must contain "text" field')
+            
+        # Batch tokenization with dynamic padding
+        texts = [item['text'] for item in data]
+        batch_size = 1000  # Process in chunks to avoid memory issues
+        processed_data = []
+        
+        # Configure tokenizer for better performance
+        self.tokenizer.padding_side = 'right'
+        self.tokenizer.truncation_side = 'right'
+        
+        for i in range(0, len(texts), batch_size):
+            batch_texts = texts[i:i + batch_size]
+            
+            # Tokenize batch with dynamic padding
+            tokenized = self.tokenizer(
+                batch_texts,
+                padding=True,  # Dynamic padding
+                truncation=True,
+                max_length=512,
+                return_tensors='pt',
+                return_attention_mask=True,
+                return_special_tokens_mask=True
+            )
+            
+            # Convert to list of dicts with data augmentation
+            for j in range(len(batch_texts)):
+                # Apply random masking for data augmentation
+                input_ids = tokenized['input_ids'][j]
+                special_tokens_mask = tokenized['special_tokens_mask'][j]
+                
+                # Create masked version with 15% probability
+                if torch.rand(1).item() < 0.15:
+                    input_ids = self._apply_random_masking(
+                        input_ids,
+                        special_tokens_mask
+                    )
+                
+                processed_data.append({
+                    'input_ids': input_ids,
+                    'attention_mask': tokenized['attention_mask'][j],
+                    'labels': tokenized['input_ids'][j].clone()
+                })
+            
+        return processed_data
 
     def _preprocess_text_data(self, text):
         """预处理纯文本数据，为模型训练准备输入
         
         该方法负责对纯文本数据进行预处理，包括文本清洗、格式转换等操作。
-        具体实现委托给ModelCoreOperations类完成。
         
         Args:
             text (str): 需要预处理的原始文本内容
@@ -357,9 +404,10 @@ class DataProcessing:
             list: 预处理后的数据列表，格式为字典列表
             
         实现细节：
-        1. 调用ModelCoreOperations的预处理方法
-        2. 支持批量处理，提高效率
-        3. 保持数据一致性
+        1. 使用分词器将文本编码为token序列
+        2. 将token序列切分为固定长度的chunk
+        3. 对每个chunk进行填充和截断处理
+        4. 返回处理后的数据列表
         
         示例:
             >>> text = "这是一个测试文本"
@@ -376,8 +424,34 @@ class DataProcessing:
         - 处理前会自动去除空白字符
         - 支持多语言文本处理
         """
-        from app.model.core_operations import ModelCoreOperations
-        return ModelCoreOperations()._preprocess_text_data(text)
+        if not self.tokenizer:
+            raise ValueError('Tokenizer not loaded')
+            
+        # Split text into chunks
+        chunk_size = 512
+        tokens = self.tokenizer.encode(text)
+        chunks = [
+            tokens[i:i + chunk_size]
+            for i in range(0, len(tokens), chunk_size)
+        ]
+        
+        processed_data = []
+        for chunk in chunks:
+            tokenized = self.tokenizer.prepare_for_model(
+                chunk,
+                padding='max_length',
+                truncation=True,
+                max_length=512,
+                return_tensors='pt'
+            )
+            
+            processed_data.append({
+                'input_ids': tokenized['input_ids'],
+                'attention_mask': tokenized['attention_mask'],
+                'labels': tokenized['input_ids'].clone()
+            })
+            
+        return processed_data
 
     def create_data_loader(self, dataset, batch_size):
         """创建优化的数据加载器，支持增强的并行处理
@@ -429,8 +503,110 @@ class DataProcessing:
         - num_workers应根据CPU核心数合理配置
         - 建议在训练循环开始前预加载数据
         """
-        from app.model.core_operations import ModelCoreOperations
-        return ModelCoreOperations().create_data_loader(dataset, batch_size)
+        try:
+            logger.info(f'Creating data loader with batch size {batch_size}')
+            
+            # Create custom dataset class with enhanced caching
+            class TextDataset(torch.utils.data.Dataset):
+                def __init__(self, data):
+                    self.data = data
+                    self.cache = {}
+                    self.lock = threading.Lock()  # Thread-safe cache access
+                    
+                def __len__(self):
+                    return len(self.data)
+                    
+                def __getitem__(self, idx):
+                    # Use cached item if available
+                    with self.lock:
+                        if idx in self.cache:
+                            return self.cache[idx]
+                            
+                    # Process data
+                    item = {
+                        'input_ids': self.data[idx]['input_ids'].squeeze(0),
+                        'attention_mask': self.data[idx]['attention_mask'].squeeze(0),
+                        'labels': self.data[idx]['labels'].squeeze(0)
+                    }
+                    
+                    # Cache item with thread-safe access
+                    with self.lock:
+                        self.cache[idx] = item
+                    return item
+                    
+                def clear_cache(self):
+                    """Clear cache to free memory"""
+                    with self.lock:
+                        self.cache.clear()
+            
+            # Create dataset instance
+            text_dataset = TextDataset(dataset)
+            
+            # Calculate optimal number of workers based on system resources
+            import multiprocessing
+            cpu_count = multiprocessing.cpu_count()
+            gpu_count = torch.cuda.device_count() if torch.cuda.is_available() else 0
+            
+            # Dynamic worker calculation based on system resources
+            num_workers = min(
+                max(2, cpu_count - 1),  # At least 2 workers
+                max(4, gpu_count * 4)   # 4 workers per GPU
+            )
+            
+            # Configure DataLoader with enhanced parallel settings
+            data_loader = torch.utils.data.DataLoader(
+                text_dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=True,
+                num_workers=num_workers,
+                pin_memory=torch.cuda.is_available(),  # Only pin memory if GPU available
+                persistent_workers=True,
+                prefetch_factor=4 if num_workers > 0 else None,  # Increased prefetch
+                worker_init_fn=lambda worker_id: torch.manual_seed(
+                    torch.initial_seed() + worker_id
+                )  # Ensure reproducibility
+            )
+            
+            # Log data loader configuration
+            logger.info(f'Created data loader with:')
+            logger.info(f'- Workers: {num_workers}')
+            logger.info(f'- Prefetch factor: 4')
+            logger.info(f'- Pin memory: {torch.cuda.is_available()}')
+            logger.info(f'- Persistent workers: True')
+            
+            # Add data loader statistics tracking
+            class TrackedDataLoader:
+                def __init__(self, data_loader):
+                    self.data_loader = data_loader
+                    self.batches_processed = 0
+                    self.total_samples = 0
+                    
+                def __iter__(self):
+                    self.batches_processed = 0
+                    self.total_samples = 0
+                    return self
+                    
+                def __next__(self):
+                    batch = next(self.data_loader)
+                    self.batches_processed += 1
+                    self.total_samples += batch['input_ids'].size(0)
+                    return batch
+                    
+                def __len__(self):
+                    return len(self.data_loader)
+                    
+                def get_stats(self):
+                    return {
+                        'batches_processed': self.batches_processed,
+                        'total_samples': self.total_samples
+                    }
+            
+            return TrackedDataLoader(data_loader)
+            
+        except Exception as e:
+            logger.error(f'Failed to create data loader: {str(e)}')
+            raise
 
     def tokenize_text(self, text: str) -> torch.Tensor:
         """将输入文本转换为token ID张量
@@ -525,3 +701,41 @@ class DataProcessing:
         except Exception as e:
             logger.error(f'Text decoding failed: {str(e)}')
             raise
+            
+    def _apply_random_masking(self, input_ids, special_tokens_mask):
+        """
+        应用随机掩码和其他数据增强技术
+        
+        参数:
+            input_ids: 输入token的ID序列
+            special_tokens_mask: 特殊token的掩码
+            
+        返回:
+            应用随机掩码后的input_ids
+            
+        实现细节:
+        1. 创建非特殊token的掩码
+        2. 随机选择15%的非特殊token进行掩码
+        3. 返回处理后的input_ids
+        """
+        # Create mask for non-special tokens
+        mask = (special_tokens_mask == 0)
+        mask_indices = torch.nonzero(mask).squeeze()
+        
+        # Randomly select 15% of non-special tokens
+        num_to_mask = max(1, int(mask_indices.numel() * 0.15))
+        mask_indices = mask_indices[torch.randperm(mask_indices.numel())[:num_to_mask]]
+        
+        # Create a copy of input_ids to avoid modifying the original
+        masked_input_ids = input_ids.clone()
+        
+        # Get mask token id from tokenizer
+        mask_token_id = self.tokenizer.mask_token_id
+        if mask_token_id is None:
+            # If tokenizer doesn't have a mask token, use a random token
+            mask_token_id = torch.randint(0, self.tokenizer.vocab_size, (1,)).item()
+        
+        # Apply masking
+        masked_input_ids[mask_indices] = mask_token_id
+        
+        return masked_input_ids

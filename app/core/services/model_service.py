@@ -27,8 +27,8 @@ class TrainingError(Exception):
     pass
 from app.core.interfaces.model_operations import IModelOperations
 from app.core.services.model_components import (
-    DataProcessor,
-    ModelTrainer,
+    DataProcessing,
+    ModelTraining,
     ResourceMonitor,
     ModelEvaluator,
     ModelInference
@@ -79,8 +79,8 @@ class ModelService(IModelOperations):
         self.class_names = class_names
         
         # 初始化各功能组件
-        self.data_processor = DataProcessor()
-        self.model_trainer = ModelTrainer(model, device)
+        self.data_processor = DataProcessing()
+        self.model_trainer = ModelTraining(model, device)
         self.resource_monitor = ResourceMonitor(self.model_trainer.metrics)
         self.model_evaluator = ModelEvaluator(num_classes, class_names)
         self.model_inference = ModelInference(model, device)

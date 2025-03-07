@@ -3,8 +3,8 @@ import torch
 import logging
 from datetime import datetime
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from config.config import MODEL_BASE_PATH
-from app.repositories.model_repository import ModelRepository
+from config.config import Config
+from app.repositories.model_repository import ModelDAO
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class ModelTraining:
             Exception: 训练失败时抛出异常
         """
         try:
-            training_record = ModelRepository.create_training_record(config)  # 创建训练记录
+            training_record = ModelDAO.create_training_record(config)  # 创建训练记录
             
             logger.info('Starting training with configuration:')
             logger.info(f'- Model: {self.model.__class__.__name__}')
@@ -101,16 +101,16 @@ class ModelTraining:
             )
             
             for epoch in range(start_epoch, config.num_epochs):  # 遍历每个epoch
-                self._train_epoch(epoch, config, optimizer, scheduler, metrics)  # 执行单个epoch训练
+                self._train_epoch(epoch, config, optimizer, scheduler, metrics, training_data_path)  # 执行单个epoch训练
                 
                 if (epoch + 1) % config.checkpoint_interval == 0:  # 检查是否到达保存点
                     checkpoint_path = os.path.join(  # 构建检查点路径
-                        MODEL_BASE_PATH,
+                        Config.MODEL_BASE_PATH,
                         f'checkpoint_epoch_{epoch + 1}'
                     )
                     self._save_checkpoint(checkpoint_path, epoch, optimizer, scheduler)  # 保存检查点
             
-            ModelRepository.update_training_record(training_record.id, 'completed')  # 更新训练记录状态
+            ModelDAO.update_training_record(training_record.id, 'completed')  # 更新训练记录状态
             self._stop_resource_monitoring()  # 停止资源监控
             self._cleanup_resources()  # 清理资源
             
@@ -121,7 +121,7 @@ class ModelTraining:
             self._handle_training_failure(e, epoch, checkpoint_path, training_record)  # 处理训练失败
             raise  # 重新抛出异常
 
-    def _train_epoch(self, epoch, config, optimizer, scheduler, metrics):
+    def _train_epoch(self, epoch, config, optimizer, scheduler, metrics, training_data_path):
         """执行单个epoch的训练
         
         Args:
@@ -144,6 +144,7 @@ class ModelTraining:
         accumulation_steps = config.gradient_accumulation_steps  # 获取梯度累积步数
         optimizer.zero_grad()  # 清空梯度
         
+        train_loader = self._get_train_loader(config, training_data_path)  # 获取训练数据加载器
         for step, batch in enumerate(train_loader):  # 遍历训练数据
             inputs = batch['input_ids'].to(self.device)  # 将输入数据移动到指定设备
             labels = batch['labels'].to(self.device)  # 将标签数据移动到指定设备

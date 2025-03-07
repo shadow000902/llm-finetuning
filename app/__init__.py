@@ -6,6 +6,7 @@
 
 from flask import Flask
 from config.config import DevelopmentConfig
+from app.extensions import db  # 导出db对象
 
 def create_app(config_class=DevelopmentConfig):
     """

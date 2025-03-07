@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
+import pandas as pd
 from torch.utils.data import DataLoader
 from app.core.interfaces.data_processing import IDataProcessor
 
@@ -21,24 +22,28 @@ class DataService(IDataProcessor):
         """
         self._processor = processor
 
-    def load_dataset(self, data_path: str) -> Any:
+    def load_dataset(self, path: str) -> Union[pd.DataFrame, Dict[str, any]]:
         """加载数据集
         
         Args:
-            data_path: 数据集路径
+            path: 数据集路径
             
         Returns:
-            加载的数据集对象
+            加载的数据集，支持DataFrame或字典格式
             
         Raises:
-            FileNotFoundError: 当数据集路径不存在时抛出
-            ValueError: 当数据集格式无效时抛出
+            IOError: 当文件加载失败时抛出
+            ValueError: 当路径无效或数据格式不支持时抛出
             
         Example:
-            >>> data_service = DataService(processor)
-            >>> dataset = data_service.load_dataset("data/train.csv")
+            >>> dataset = processor.load_dataset("data.csv")
         """
-        return self._processor.load_dataset(data_path)
+        try:
+            return self._processor.load_dataset(path)
+        except FileNotFoundError as e:
+            raise IOError(f"Failed to load dataset: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Invalid data format: {str(e)}")
 
     def preprocess_data(self, data: Any) -> Any:
         """预处理数据
@@ -93,3 +98,48 @@ class DataService(IDataProcessor):
             >>> print(f"Number of samples: {stats['num_samples']}")
         """
         return self._processor.get_data_stats()
+
+    def feature_engineering(self, data: Any) -> Any:
+        """特征工程处理
+        
+        Args:
+            data: 原始数据
+            
+        Returns:
+            处理后的特征数据
+            
+        Raises:
+            ValueError: 当输入数据格式无效时抛出
+        """
+        return self._processor.feature_engineering(data)
+
+    def load_processor(self, path: str) -> None:
+        """加载处理器状态
+        
+        Args:
+            path: 处理器状态文件路径
+        """
+        self._processor.load_processor(path)
+
+    def save_processor(self, path: str) -> None:
+        """保存处理器状态
+        
+        Args:
+            path: 处理器状态保存路径
+        """
+        self._processor.save_processor(path)
+
+    def split_data(self, data: Any, ratios: Dict[str, float]) -> Dict[str, Any]:
+        """拆分数据集
+        
+        Args:
+            data: 完整数据集
+            ratios: 拆分比例字典，如 {'train': 0.8, 'val': 0.1, 'test': 0.1}
+            
+        Returns:
+            包含拆分后数据集的字典
+            
+        Raises:
+            ValueError: 当比例总和不为1或数据格式无效时抛出
+        """
+        return self._processor.split_data(data, ratios)
