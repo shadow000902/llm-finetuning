@@ -46,15 +46,12 @@ class ModelCoreOperations:
         processed_data = self._data_service.preprocess_data(training_data)
         
         # 配置训练
-        self._training_service.configure(training_config)
+        self._training_service.configure_training(training_config)
         
         # 执行训练
-        return self._training_service.train(
+        return self._training_service.execute_training(
             train_data=processed_data,
-            epochs=training_config.get("epochs", 10),
-            batch_size=training_config.get("batch_size", 32),
-            learning_rate=training_config.get("learning_rate", 0.001),
-            early_stopping_patience=training_config.get("early_stopping_patience", 5)
+            val_data=None
         )
 
     def predict(self, model, input_data: Any) -> Any:

@@ -41,17 +41,18 @@ class TestCoreOperations:
         training_data = [1, 2, 3]
         training_config = {"epochs": 10}
         mock_services["data_service"].preprocess_data.return_value = training_data
-        mock_services["training_service"].train.return_value = {"loss": 0.1}
+        mock_services["training_service"].configure_training.return_value = {}
+        mock_services["training_service"].execute_training.return_value = {"loss": 0.1}
         
         result = core_operations.train_model(training_data, training_config)
         
         mock_services["data_service"].preprocess_data.assert_called_once_with(training_data)
-        mock_services["training_service"].train.assert_called_once_with(
+        # 验证configure方法被调用
+        mock_services["training_service"].configure_training.assert_called_once_with(training_config)
+        # 验证execute_training方法被调用，而不是train方法
+        mock_services["training_service"].execute_training.assert_called_once_with(
             train_data=training_data,
-            epochs=10,
-            batch_size=32,
-            learning_rate=0.001,
-            early_stopping_patience=5
+            val_data=None
         )
         assert result == {"loss": 0.1}
 
