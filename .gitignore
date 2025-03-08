@@ -1,5 +1,6 @@
-venv
+.venv
 .idea
+.github
 .vscode
 .DS_Store
 .pytest_cache
