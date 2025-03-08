@@ -1,0 +1,22 @@
+# 开发环境配置
+
+# 应用配置
+app:
+  debug: true
+
+# 数据库配置
+database:
+  url: "sqlite:///dev.db"
+  track_modifications: true
+
+# 日志配置
+logging:
+  level: "DEBUG"
+  to_console: true
+  to_file: true
+
+# API配置
+api:
+  enable_docs: true
+  token_required: false  # 开发环境不强制要求API令牌
+  enable_rate_limit: false  # 开发环境不启用速率限制 

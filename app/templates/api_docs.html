@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Finetuning API 文档</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        h1 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        h2 {
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        h3 {
+            margin-top: 25px;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .method {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 3px;
+            color: white;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get {
+            background-color: #61affe;
+        }
+        .post {
+            background-color: #49cc90;
+        }
+        .put {
+            background-color: #fca130;
+        }
+        .delete {
+            background-color: #f93e3e;
+        }
+        .endpoint {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .endpoint-path {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .section {
+            margin-top: 50px;
+        }
+        .description {
+            color: #666;
+            margin: 10px 0;
+        }
+        .required {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .optional {
+            color: #7f8c8d;
+        }
+        .response-example {
+            margin-top: 15px;
+        }
+        .nav {
+            position: sticky;
+            top: 20px;
+            padding: 15px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 30px;
+        }
+        .nav a {
+            color: #2c3e50;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .nav a:hover {
+            color: #3498db;
+        }
+        .error-code {
+            color: #e74c3c;
+        }
+        .success-response {
+            border-left: 4px solid #2ecc71;
+            padding-left: 15px;
+        }
+        .error-response {
+            border-left: 4px solid #e74c3c;
+            padding-left: 15px;
+        }
+        .rate-limit {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .deprecated {
+            text-decoration: line-through;
+            color: #95a5a6;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="#basic">基本信息</a>
+        <a href="#auth">认证</a>
+        <a href="#training">模型训练</a>
+        <a href="#inference">模型推理</a>
+        <a href="#models">模型管理</a>
+        <a href="#datasets">数据集管理</a>
+        <a href="#errors">错误代码</a>
+    </div>
+
+    <h1>LLM Finetuning API 文档</h1>
+    
+    <div id="basic" class="section">
+        <h2>基本信息</h2>
+        <p>基础URL: <code>http://localhost:5000/api/v1</code></p>
+        <p>内容类型: <code>application/json</code></p>
+        <p>认证方式: Bearer Token</p>
+    </div>
+
+    <div id="auth" class="section">
+        <h2>认证</h2>
+        <p>所有API请求都需要在HTTP头部包含认证令牌：</p>
+        <pre><code>Authorization: Bearer YOUR_TOKEN</code></pre>
+        <p>认证令牌可以通过登录API获取。</p>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/login</span>
+            </div>
+            <p class="description">获取认证令牌</p>
+            
+            <h4>请求参数</h4>
+            <table>
+                <tr>
+                    <th>参数</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>描述</th>
+                </tr>
+                <tr>
+                    <td>username</td>
+                    <td>string</td>
+                    <td><span class="required">是</span></td>
+                    <td>用户名</td>
+                </tr>
+                <tr>
+                    <td>password</td>
+                    <td>string</td>
+                    <td><span class="required">是</span></td>
+                    <td>密码</td>
+                </tr>
+            </table>
+
+            <div class="response-example success-response">
+                <h4>响应示例</h4>
+                <pre><code>{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 3600,
+  "token_type": "Bearer"
+}</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="training" class="section">
+        <h2>1. 模型训练</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/train</span>
+            </div>
+            <p class="description">启动一个新的模型训练任务</p>
+            
+            <h4>请求参数</h4>
+            <table>
+                <tr>
+                    <th>参数</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>描述</th>
+                </tr>
+                <tr>
+                    <td>dataset_path</td>
+                    <td>string</td>
+                    <td><span class="required">是</span></td>
+                    <td>训练数据集路径</td>
+                </tr>
+                <tr>
+                    <td>config</td>
+                    <td>object</td>
+                    <td><span class="optional">否</span></td>
+                    <td>训练配置参数</td>
+                </tr>
+                <tr>
+                    <td>config.learning_rate</td>
+                    <td>number</td>
+                    <td><span class="optional">否</span></td>
+                    <td>学习率，默认为3e-5</td>
+                </tr>
+                <tr>
+                    <td>config.batch_size</td>
+                    <td>integer</td>
+                    <td><span class="optional">否</span></td>
+                    <td>批次大小，默认为8</td>
+                </tr>
+                <tr>
+                    <td>lora_config</td>
+                    <td>object</td>
+                    <td><span class="optional">否</span></td>
+                    <td>LoRA配置参数</td>
+                </tr>
+            </table>
+
+            <div class="response-example success-response">
+                <h4>响应示例</h4>
+                <pre><code>{
+  "task_id": "12345678-1234-5678-1234-567812345678",
+  "status": "started",
+  "message": "训练任务已启动",
+  "created_at": "2023-03-08T12:00:00Z"
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method get">GET</span>
+                <span class="endpoint-path">/train/status/{task_id}</span>
+            </div>
+            <p class="description">获取指定训练任务的状态</p>
+            
+            <h4>路径参数</h4>
+            <table>
+                <tr>
+                    <th>参数</th>
+                    <th>类型</th>
+                    <th>描述</th>
+                </tr>
+                <tr>
+                    <td>task_id</td>
+                    <td>string</td>
+                    <td>训练任务ID</td>
+                </tr>
+            </table>
+
+            <div class="response-example success-response">
+                <h4>响应示例</h4>
+                <pre><code>{
+  "task_id": "12345678-1234-5678-1234-567812345678",
+  "status": "running",
+  "progress": 45.5,
+  "metrics": {
+    "train_loss": 2.1543,
+    "learning_rate": 2.8e-5,
+    "epoch": 1.5
+  },
+  "started_at": "2023-03-08T12:00:00Z",
+  "updated_at": "2023-03-08T12:30:00Z"
+}</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="inference" class="section">
+        <h2>2. 模型推理</h2>
+
+        <div class="endpoint">
+            <div class="endpoint-header">
+                <span class="method post">POST</span>
+                <span class="endpoint-path">/generate</span>
+            </div>
+            <p class="description">使用模型生成文本</p>
+            
+            <h4>请求参数</h4>
+            <table>
+                <tr>
+                    <th>参数</th>
+                    <th>类型</th>
+                    <th>必填</th>
+                    <th>描述</th>
+                </tr>
+                <tr>
+                    <td>prompt</td>
+                    <td>string</td>
+                    <td><span class="required">是</span></td>
+                    <td>输入提示文本</td>
+                </tr>
+                <tr>
+                    <td>model_path</td>
+                    <td>string</td>
+                    <td><span class="optional">否</span></td>
+                    <td>模型路径，默认使用最新训练的模型</td>
+                </tr>
+                <tr>
+                    <td>max_length</td>
+                    <td>integer</td>
+                    <td><span class="optional">否</span></td>
+                    <td>最大生成长度，默认为100</td>
+                </tr>
+            </table>
+
+            <div class="response-example success-response">
+                <h4>响应示例</h4>
+                <pre><code>{
+  "prompt": "请解释量子计算的基本原理",
+  "generated_texts": [
+    "量子计算是一种利用量子力学原理进行信息处理的计算方式..."
+  ],
+  "model_path": "models/checkpoints/sample/final",
+  "generation_time": 1.25,
+  "timestamp": "2023-03-08T14:00:00Z"
+}</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <div id="errors" class="section">
+        <h2>错误代码</h2>
+        <table>
+            <tr>
+                <th>状态码</th>
+                <th>错误代码</th>
+                <th>描述</th>
+            </tr>
+            <tr>
+                <td>400</td>
+                <td><span class="error-code">INVALID_REQUEST</span></td>
+                <td>请求参数无效</td>
+            </tr>
+            <tr>
+                <td>401</td>
+                <td><span class="error-code">UNAUTHORIZED</span></td>
+                <td>未授权访问</td>
+            </tr>
+            <tr>
+                <td>404</td>
+                <td><span class="error-code">NOT_FOUND</span></td>
+                <td>资源不存在</td>
+            </tr>
+            <tr>
+                <td>500</td>
+                <td><span class="error-code">INTERNAL_ERROR</span></td>
+                <td>服务器内部错误</td>
+            </tr>
+        </table>
+
+        <div class="error-response">
+            <h4>错误响应示例</h4>
+            <pre><code>{
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "参数'prompt'不能为空",
+    "details": {
+      "field": "prompt",
+      "reason": "required"
+    }
+  },
+  "timestamp": "2023-03-08T16:00:00Z",
+  "request_id": "req-12345678"
+}</code></pre>
+        </div>
+    </div>
+
+    <div class="rate-limit">
+        <h2>速率限制</h2>
+        <p>API实施了速率限制，以防止过度使用：</p>
+        <ul>
+            <li>训练API: 每小时10次请求</li>
+            <li>推理API: 每分钟60次请求</li>
+            <li>其他API: 每分钟120次请求</li>
+        </ul>
+        <p>超过限制时，API将返回429状态码。响应头部包含以下信息：</p>
+        <pre><code>X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1678291200</code></pre>
+    </div>
+</body>
+</html> 

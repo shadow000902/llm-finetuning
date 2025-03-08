@@ -35,14 +35,12 @@ class TestDataService:
     def test_split_data(self, data_service, mock_data_processor):
         # 测试数据拆分
         test_data = "full_data"
-        split_data = {"train": "train_data", "val": "val_data"}
+        split_data = ("train_data", "val_data")
         mock_data_processor.split_data.return_value = split_data
         
-        result = data_service.split_data(test_data, {"train": 0.8, "val": 0.2})
+        result = data_service.split_data(test_data)
         
-        mock_data_processor.split_data.assert_called_once_with(
-            test_data, {"train": 0.8, "val": 0.2}
-        )
+        mock_data_processor.split_data.assert_called_once_with(test_data, [0.8, 0.2])
         assert result == split_data
 
     def test_feature_engineering(self, data_service, mock_data_processor):

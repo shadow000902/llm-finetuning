@@ -176,56 +176,78 @@ A: 可以使用以下指标：
 ```
 .
 ├── .env                  # 环境变量配置文件
+├── .env.example          # 环境变量示例文件
 ├── .gitignore            # Git忽略文件配置
 ├── README.md             # 项目说明文档
+├── README_CN.md          # 中文项目说明文档
+├── USAGE.md              # 使用说明文档
 ├── requirements.txt      # Python依赖文件
 ├── run.py                # 项目启动脚本
+├── setup.py              # 项目安装脚本
 ├── app/                  # 应用核心代码
 │   ├── __init__.py       # 应用初始化
+│   ├── cli.py            # 命令行接口
+│   ├── extensions.py     # 扩展模块
 │   ├── api/              # API接口
 │   │   ├── __init__.py   # API模块初始化
 │   │   └── routes.py     # API路由配置
 │   ├── core/             # 核心业务逻辑
 │   │   ├── factories/    # 工厂模式实现
-│   │   │   └── service_factory.py  # 服务工厂
 │   │   ├── interfaces/   # 接口定义
-│   │   │   ├── data_processing.py  # 数据处理接口
-│   │   │   ├── model_operations.py # 模型操作接口
-│   │   │   └── training.py         # 训练接口
+│   │   ├── processors/   # 处理器
 │   │   └── services/     # 服务实现
-│   │       ├── data_service.py      # 数据服务
-│   │       ├── model_service.py     # 模型服务
-│   │       ├── training_service.py  # 训练服务
-│   │       └── model_components/    # 模型组件
-│   │           ├── __init__.py      # 组件初始化
-│   │           ├── data_processing.py  # 数据处理组件
-│   │           ├── model_evaluation.py # 模型评估组件
-│   │           ├── model_inference.py  # 模型推理组件
-│   │           ├── model_training.py   # 模型训练组件
-│   │           └── resource_monitoring.py  # 资源监控组件
+│   ├── implementations/  # 具体实现
+│   │   ├── __init__.py   # 实现模块初始化
+│   │   ├── data_processors.py  # 数据处理实现
+│   │   ├── model_operations.py # 模型操作实现
+│   │   └── training.py         # 训练实现
 │   ├── model/            # 模型相关实现
 │   │   ├── __init__.py   # 模型模块初始化
 │   │   ├── core_operations.py  # 核心操作
 │   │   ├── training_service.py # 训练服务
 │   │   └── implementations/    # 具体实现
 │   ├── repositories/     # 数据仓库
+│   │   ├── __init__.py   # 仓库模块初始化
 │   │   └── model_repository.py # 模型仓库
+│   ├── scripts/          # 脚本工具
+│   │   ├── __init__.py   # 脚本模块初始化
+│   │   ├── README.md     # 脚本说明文档
+│   │   ├── train_model.py      # 模型训练脚本
+│   │   ├── inference.py        # 推理脚本
+│   │   ├── evaluate_model.py   # 模型评估脚本
+│   │   └── process_data.py     # 数据处理脚本
+│   ├── templates/        # 模板文件
+│   │   └── api_docs.html # API文档模板
 │   └── utils/            # 工具类
-│       └── validation.py # 验证工具
+│       ├── config_loader.py # 配置加载工具
+│       ├── validation.py # 验证工具
+│       ├── logging.py    # 日志工具
+│       └── metrics.py    # 指标计算工具
 ├── config/               # 配置文件
-│   └── config.py         # 配置管理
+│   ├── config.py         # 配置管理
+│   ├── default_config.yaml    # 默认配置
+│   ├── development_config.yaml # 开发环境配置
+│   ├── api_config.yaml   # API配置
+│   ├── logging_config.yaml # 日志配置
+│   ├── prod_config.yaml  # 生产环境配置
+│   └── train_config.yaml # 训练配置
+├── data/                 # 数据目录
+│   ├── raw/              # 原始数据
+│   ├── processed/        # 处理后的数据
+│   └── embeddings/       # 嵌入向量数据
+├── docs/                 # 文档目录
+│   ├── api.md            # API文档
+│   └── configuration.md  # 配置文档
 ├── instance/             # 实例相关文件
+├── logs/                 # 日志文件目录
+├── models/               # 模型存储目录
+│   ├── checkpoints/      # 模型检查点
+│   └── exports/          # 导出模型
+├── results/              # 结果输出目录
 └── tests/                # 测试代码
     ├── integration/      # 集成测试
-    │   ├── test_data_pipeline.py    # 数据管道测试
-    │   └── test_model_integration.py # 模型集成测试
     ├── unit/             # 单元测试
-    │   ├── test_core_operations.py  # 核心操作测试
-    │   ├── test_data_service.py     # 数据服务测试
-    │   ├── test_model_service.py    # 模型服务测试
-    │   └── test_training_service.py # 训练服务测试
     └── test_data/        # 测试数据
-        └── test_data.csv # 测试数据集
 ```
 
 ## 开发环境配置

@@ -1,0 +1,31 @@
+# 日志配置
+
+# 日志级别
+level: INFO
+
+# 日志格式
+format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 日志处理器
+handlers:
+  # 控制台处理器
+  console:
+    enabled: true
+    level: INFO
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # 文件处理器
+  file:
+    enabled: true
+    level: INFO
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    filename: "logs/app.log"
+    max_bytes: 10485760  # 10MB
+    backup_count: 5
+
+# 第三方库日志级别
+third_party:
+  transformers: WARNING
+  datasets: WARNING
+  torch: WARNING
+  accelerate: WARNING 

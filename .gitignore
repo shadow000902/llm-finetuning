@@ -1,7 +1,13 @@
 venv
 .idea
 .vscode
-__pycache__/*
 .DS_Store
 .pytest_cache
-*/__pycache__
+
+# Python 字节码缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+logs
+results

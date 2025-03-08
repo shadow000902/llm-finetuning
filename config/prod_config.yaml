@@ -1,0 +1,54 @@
+app:
+  name: "llm-finetuning"
+  version: "1.0.0"
+  debug: false
+  log_level: "info"
+  secret_key: "${APP_SECRET_KEY}"
+  allowed_hosts: ["api.example.com", "www.example.com"]
+
+server:
+  host: "0.0.0.0"
+  port: 5000
+  workers: 4
+  timeout: 60
+  max_requests: 1000
+  max_requests_jitter: 50
+
+database:
+  url: "${DATABASE_URL}"
+  pool_size: 10
+  max_overflow: 20
+  pool_recycle: 3600
+
+redis:
+  url: "${REDIS_URL}"
+  max_connections: 20
+
+model:
+  base_path: "./models/exports"
+  default_model: "deepseek-r1-1.5b-finetuned"
+  max_batch_size: 32
+  max_sequence_length: 1024
+  timeout: 30
+  cache_size: 1000
+
+api:
+  rate_limit: 100  # 每分钟请求数
+  token_required: true
+  cors_origins: ["https://app.example.com"]
+  version_prefix: "/api/v1"
+  docs_url: "/docs"
+
+monitoring:
+  enable_prometheus: true
+  metrics_port: 9090
+  health_check_interval: 60
+  log_request_info: true
+
+security:
+  ssl_redirect: true
+  hsts_seconds: 31536000
+  frame_deny: true
+  content_type_nosniff: true
+  xss_protection: true
+  content_security_policy: "default-src 'self'" 

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 import torch
 import numpy as np
 
@@ -47,6 +47,24 @@ class IModelOperations(ABC):
                      max_length: int = 50,
                      temperature: float = 0.7) -> str:
         """文本生成"""
+        pass
+
+class ITrainingService(ABC):
+    """训练服务接口，定义模型训练相关操作"""
+    @abstractmethod
+    def configure(self, config: Dict[str, Any]) -> None:
+        """配置训练参数"""
+        pass
+
+    @abstractmethod
+    def train(self,
+             train_data: Union[torch.Tensor, Dict[str, torch.Tensor]],
+             val_data: Optional[Union[torch.Tensor, Dict[str, torch.Tensor]]] = None,
+             epochs: int = 10,
+             batch_size: int = 32,
+             learning_rate: float = 0.001,
+             early_stopping_patience: int = 5) -> Dict[str, Any]:
+        """训练模型"""
         pass
 
 class IModelService(ABC):
@@ -202,5 +220,22 @@ class IModelService(ABC):
         Example:
             >>> generated = model.generate_text("量子计算的基本原理是")
             >>> print(generated)
+        """
+        pass
+
+    @abstractmethod
+    def initialize(self, model_config: Dict[str, Any]) -> None:
+        """初始化模型
+        
+        Args:
+            model_config: 包含模型配置的字典
+            
+        Raises:
+            ValueError: 当配置无效时抛出
+            RuntimeError: 当初始化失败时抛出
+            
+        Example:
+            >>> config = {"type": "linear", "input_size": 10}
+            >>> model.initialize(config)
         """
         pass

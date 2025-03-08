@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict, Union, Tuple, List
 import pandas as pd
 from torch.utils.data import DataLoader
 from app.core.interfaces.data_processing import IDataProcessor
@@ -129,17 +129,24 @@ class DataService(IDataProcessor):
         """
         self._processor.save_processor(path)
 
-    def split_data(self, data: Any, ratios: Dict[str, float]) -> Dict[str, Any]:
-        """拆分数据集
+    def split_data(self, data: Any, ratios: List[float] = [0.8, 0.2]) -> Tuple[Any, Any]:
+        """将数据集分割为训练集和验证集
         
         Args:
-            data: 完整数据集
-            ratios: 拆分比例字典，如 {'train': 0.8, 'val': 0.1, 'test': 0.1}
+            data: 要分割的数据集
+            ratios: 分割比例，默认为 [0.8, 0.2]，表示训练集占80%，验证集占20%
             
         Returns:
-            包含拆分后数据集的字典
+            (训练集, 验证集) 的元组
             
         Raises:
-            ValueError: 当比例总和不为1或数据格式无效时抛出
+            ValueError: 当分割比例无效时抛出
+            
+        Example:
+            >>> train_data, val_data = data_service.split_data(processed_data)
         """
+        if not ratios:
+            ratios = [0.8, 0.2]
+        if abs(sum(ratios) - 1.0) > 1e-6:
+            raise ValueError("Split ratios must sum to 1")
         return self._processor.split_data(data, ratios)

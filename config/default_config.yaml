@@ -1,0 +1,89 @@
+# 默认配置
+
+# 应用配置
+app:
+  name: "LLM Finetuning"
+  version: "0.1.0"
+  debug: false
+  host: "0.0.0.0"
+  port: 5000
+  secret_key: "default-secret-key"
+
+# 数据库配置
+database:
+  type: "sqlite"
+  url: "sqlite:///app.db"
+  track_modifications: false
+
+# 模型配置
+model:
+  base_model: "deepseek-r1-1.5b"
+  device: "auto"  # auto, cpu, cuda, cuda:0, etc.
+  max_length: 512
+  cache_dir: "./models/cache"
+  checkpoints_dir: "./models/checkpoints"
+  exports_dir: "./models/exports"
+
+# 训练配置
+training:
+  batch_size: 8
+  gradient_accumulation_steps: 1
+  num_epochs: 3
+  learning_rate: 3e-5
+  fp16: true
+  logging_steps: 100
+  save_steps: 1000
+  evaluation_strategy: "steps"
+  eval_steps: 500
+  save_total_limit: 3
+  load_best_model_at_end: true
+  report_to: "tensorboard"
+  weight_decay: 0.01
+  warmup_steps: 500
+  lr_scheduler_type: "cosine"
+  max_training_threads: 4
+
+# LoRA配置
+lora:
+  r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  bias: "none"
+
+# 数据配置
+data:
+  raw_dir: "./data/raw"
+  processed_dir: "./data/processed"
+  embeddings_dir: "./data/embeddings"
+  preprocessing_num_workers: 4
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  to_console: true
+  to_file: true
+  file: "./logs/app.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# API配置
+api:
+  version: "v1"
+  prefix: "/api/v1"
+  enable_docs: true
+  docs_url: "/docs"
+  enable_cors: true
+  allowed_origins: ["*"]
+  enable_rate_limit: true
+  token_required: true
+  token: "default-api-token"
+  rate_limit_train: "10/hour"
+  rate_limit_inference: "60/minute"
+  rate_limit_default: "120/minute"
+
+# 安全配置
+security:
+  jwt_secret_key: "default-jwt-secret-key"
+  jwt_access_token_expires: 3600  # 1小时
+  jwt_refresh_token_expires: 2592000  # 30天 

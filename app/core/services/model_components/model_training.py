@@ -26,6 +26,7 @@ class ModelTraining:
             tokenizer: 文本分词器
             device: 训练设备（如'cuda'或'cpu'）
         """
+        self.metrics = None
         self.model = model  # 训练模型
         self.tokenizer = tokenizer  # 文本分词器
         self.device = device  # 训练设备

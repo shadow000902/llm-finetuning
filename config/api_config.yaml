@@ -1,0 +1,75 @@
+# API配置
+
+# API基本配置
+api:
+  # API版本
+  version: "v1"
+  
+  # 是否启用文档
+  enable_docs: true
+  
+  # 文档URL
+  docs_url: "/docs"
+  
+  # 是否启用CORS
+  enable_cors: true
+  
+  # 允许的源
+  allowed_origins: ["*"]
+  
+  # 是否启用速率限制
+  enable_rate_limit: true
+
+# 认证配置
+auth:
+  # 是否启用认证
+  enable_auth: true
+  
+  # 认证类型，可选值为"token"、"jwt"或"basic"
+  auth_type: "token"
+  
+  # 令牌过期时间（秒）
+  token_expire: 86400
+  
+  # 是否启用刷新令牌
+  enable_refresh_token: true
+
+# 模型配置
+model:
+  # 默认模型路径
+  default_model: "models/checkpoints/sample/final"
+  
+  # 可用模型列表
+  available_models:
+    - id: "model_1"
+      name: "DeepSeek-1.5B-LoRA"
+      path: "models/checkpoints/sample/final"
+      description: "基于DeepSeek-R1 1.5B模型微调的通用问答模型"
+    
+    - id: "model_2"
+      name: "DeepSeek-1.5B-医疗"
+      path: "models/checkpoints/medical/final"
+      description: "针对医疗领域微调的DeepSeek模型"
+
+# 推理配置
+inference:
+  # 默认最大生成长度
+  default_max_length: 100
+  
+  # 默认温度参数
+  default_temperature: 0.7
+  
+  # 默认top-p参数
+  default_top_p: 0.9
+  
+  # 默认top-k参数
+  default_top_k: 50
+  
+  # 默认返回序列数量
+  default_num_return_sequences: 1
+  
+  # 最大并发请求数
+  max_concurrent_requests: 10
+  
+  # 请求超时时间（秒）
+  request_timeout: 30 

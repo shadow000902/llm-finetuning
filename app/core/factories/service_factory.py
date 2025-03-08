@@ -5,9 +5,16 @@
 """
 
 from importlib import import_module
-from typing import Any
+from typing import Any, Dict, Optional
+import logging
+
 from flask import current_app
+
+from app.core.services.data_service import DataService
 from app.core.services.model_service import ModelService
+from app.core.services.training_service import TrainingService
+
+logger = logging.getLogger(__name__)
 
 class ServiceFactory:
     """
@@ -34,105 +41,106 @@ class ServiceFactory:
     3. 单元测试时注入mock服务
     """
     
-    @staticmethod
-    def create_data_service() -> Any:
-        """
-        创建数据服务实例
-        
-        该方法根据配置创建数据服务实例，处理流程如下：
-        1. 从应用配置获取数据服务配置
-        2. 动态加载数据处理器类
-        3. 实例化数据处理器
-        4. 创建并返回数据服务实例
-        
-        Returns:
-            DataService: 数据服务实例，包含以下功能：
-            - 数据加载
-            - 数据预处理
-            - 数据增强
-            - 数据缓存
-            
-        Raises:
-            ImportError: 当无法加载数据处理器类时抛出
-            ValueError: 当配置无效时抛出
-        """
-        config = current_app.config['DATA_SERVICE']
-        processor_class = ServiceFactory._import_class(config['processor'])
-        return DataService(processor_class())
+    _instances = {}  # 服务实例缓存，实现单例模式
+    
+    @classmethod
+    def create_data_service(cls) -> Any:
+        """创建数据服务实例"""
+        return cls._get_or_create_service('data_service', DataService)
 
-    @staticmethod
-    def create_model_service() -> Any:
-        """
-        创建模型服务实例
-        
-        该方法根据配置创建模型服务实例，处理流程如下：
-        1. 从应用配置获取模型服务配置
-        2. 动态加载模型操作接口实现类
-        3. 实例化模型操作接口
-        4. 创建并返回模型服务实例
-        
-        Returns:
-            ModelService: 模型服务实例，包含以下功能：
-            - 模型训练
-            - 模型评估
-            - 模型推理
-            - 模型保存/加载
-            
-        Raises:
-            ImportError: 当无法加载模型操作类时抛出
-            ValueError: 当配置无效时抛出
-        """
-        config = current_app.config['MODEL_SERVICE']
-        model_ops_class = ServiceFactory._import_class(config['model_ops'])
-        return ModelService(model_ops_class())
+    @classmethod
+    def create_model_service(cls) -> Any:
+        """创建模型服务实例"""
+        return cls._get_or_create_service('model_service', ModelService)
 
-    @staticmethod
-    def create_training_service() -> Any:
-        """
-        创建训练服务实例
+    @classmethod
+    def create_training_service(cls) -> Any:
+        """创建训练服务实例"""
+        return cls._get_or_create_service('training_service', TrainingService)
+
+    @classmethod
+    def _get_or_create_service(cls, service_type: str, service_class: Any) -> Any:
+        """获取或创建服务实例，实现单例模式
         
-        该方法根据配置创建训练服务实例，处理流程如下：
-        1. 从应用配置获取训练服务配置
-        2. 动态加载训练实现类
-        3. 实例化训练实现
-        4. 创建并返回训练服务实例
-        
-        Returns:
-            TrainingService: 训练服务实例，包含以下功能：
-            - 训练过程管理
-            - 资源监控
-            - 早停机制
-            - 训练报告生成
+        Args:
+            service_type: 服务类型标识
+            service_class: 服务类
             
-        Raises:
-            ImportError: 当无法加载训练实现类时抛出
-            ValueError: 当配置无效时抛出
+        Returns:
+            服务实例
         """
-        config = current_app.config['TRAINING_SERVICE']
-        training_impl_class = ServiceFactory._import_class(config['training_impl'])
-        return TrainingService(training_impl_class())
+        if service_type in cls._instances:
+            return cls._instances[service_type]
+            
+        try:
+            config_key = service_type.upper()
+            config = current_app.config.get(config_key)
+            
+            if not config:
+                logger.warning(f"No configuration found for {config_key}, using defaults")
+                if service_class.__name__ == 'DataService':
+                    # 为DataService创建一个默认的处理器
+                    from app.core.processors.default_data_processor import DefaultDataProcessor
+                    return service_class(DefaultDataProcessor())
+                elif service_class.__name__ == 'ModelService':
+                    # 为ModelService创建一个默认的模型操作
+                    from app.core.processors.default_model_operations import DefaultModelOperations
+                    return service_class(DefaultModelOperations())
+                elif service_class.__name__ == 'TrainingService':
+                    # 为TrainingService创建一个默认的训练服务
+                    from app.core.processors.default_training_service import DefaultTrainingService
+                    return service_class(DefaultTrainingService())
+                else:
+                    # 对于其他服务类，尝试无参数初始化
+                    return service_class()
+                
+            impl_class_path = None
+            for key in ['impl', 'implementation', 'processor', 'model_ops', 'training_impl']:
+                if key in config:
+                    impl_class_path = config[key]
+                    break
+                    
+            if not impl_class_path:
+                logger.warning(f"No implementation class specified in {config_key}, using defaults")
+                if service_class.__name__ == 'DataService':
+                    # 为DataService创建一个默认的处理器
+                    from app.core.processors.default_data_processor import DefaultDataProcessor
+                    return service_class(DefaultDataProcessor())
+                elif service_class.__name__ == 'ModelService':
+                    # 为ModelService创建一个默认的模型操作
+                    from app.core.processors.default_model_operations import DefaultModelOperations
+                    return service_class(DefaultModelOperations())
+                elif service_class.__name__ == 'TrainingService':
+                    # 为TrainingService创建一个默认的训练服务
+                    from app.core.processors.default_training_service import DefaultTrainingService
+                    return service_class(DefaultTrainingService())
+                else:
+                    # 对于其他服务类，尝试无参数初始化
+                    return service_class()
+                
+            impl_class = cls._import_class(impl_class_path)
+            instance = service_class(impl_class())
+            cls._instances[service_type] = instance
+            return instance
+            
+        except Exception as e:
+            logger.error(f"Failed to create {service_type}: {str(e)}", exc_info=True)
+            raise ValueError(f"Failed to create {service_type}: {str(e)}")
 
     @staticmethod
     def _import_class(class_path: str) -> Any:
-        """
-        动态导入类
-        
-        该方法根据完整类路径动态加载Python类，处理流程如下：
-        1. 解析模块路径和类名
-        2. 导入目标模块
-        3. 获取模块中的类
-        4. 返回类引用
+        """动态导入类
         
         Args:
-            class_path (str): 类的完整路径，格式为'module.path.ClassName'
+            class_path: 类的完整路径，格式为'module.path.ClassName'
             
         Returns:
-            Any: 导入的类引用
-            
-        Raises:
-            ImportError: 当模块或类不存在时抛出
-            AttributeError: 当模块中不存在指定类时抛出
+            导入的类引用
         """
-        module_path, class_name = class_path.rsplit('.', 1)
-        module = import_module(module_path)
-        return getattr(module, class_name)
+        try:
+            module_path, class_name = class_path.rsplit('.', 1)
+            module = import_module(module_path)
+            return getattr(module, class_name)
+        except (ImportError, AttributeError) as e:
+            logger.error(f"Failed to import {class_path}: {str(e)}", exc_info=True)
+            raise ImportError(f"Failed to import {class_path}: {str(e)}")

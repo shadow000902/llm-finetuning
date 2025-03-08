@@ -134,3 +134,54 @@ class ITrainingService(ABC):
             >>> print(f"Final loss: {metrics['loss'][-1]}")
         """
         pass
+
+    @abstractmethod
+    def configure_training(self, config: Dict[str, Any]) -> None:
+        """配置训练参数
+        
+        Args:
+            config: 训练配置字典，包含：
+                - epochs: 训练轮数
+                - batch_size: 批次大小
+                - learning_rate: 学习率
+                
+        Raises:
+            ValueError: 当配置参数无效时抛出
+        """
+        pass
+
+    @abstractmethod
+    def execute_training(self, train_data: Any, val_data: Any) -> Dict[str, Any]:
+        """执行模型训练
+        
+        Args:
+            train_data: 训练数据
+            val_data: 验证数据
+            
+        Returns:
+            包含训练结果的字典，通常包括：
+            - loss: 最终损失值
+            - accuracy: 最终准确率
+        """
+        pass
+
+    @abstractmethod
+    def monitor_training(self) -> Dict[str, Any]:
+        """监控训练过程
+        
+        Returns:
+            包含训练指标的字典，通常包括：
+            - loss: 当前损失值
+            - accuracy: 当前准确率
+        """
+        pass
+
+    @abstractmethod
+    def save_training_results(self, results: Dict[str, Any], save_path: str) -> None:
+        """保存训练结果
+        
+        Args:
+            results: 训练结果字典
+            save_path: 保存路径
+        """
+        pass

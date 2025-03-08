@@ -29,13 +29,12 @@ class ModelCoreOperations:
         """
         self._model_service.initialize(model_config)
 
-    def train_model(self, training_data: Any, training_config: Dict[str, Any], data_processor) -> Dict[str, Any]:
+    def train_model(self, training_data: Any, training_config: Dict[str, Any]) -> Dict[str, Any]:
         """训练模型
         
         Args:
             training_data: 训练数据
             training_config: 训练配置
-            data_processor: 数据处理器实例
             
         Returns:
             包含训练结果的字典
@@ -44,20 +43,26 @@ class ModelCoreOperations:
             RuntimeError: 当训练失败时抛出
         """
         # 数据预处理
-        processed_data = data_processor.preprocess_data(training_data)
+        processed_data = self._data_service.preprocess_data(training_data)
         
         # 配置训练
         self._training_service.configure(training_config)
         
         # 执行训练
-        return self._training_service.train(processed_data)
+        return self._training_service.train(
+            train_data=processed_data,
+            epochs=training_config.get("epochs", 10),
+            batch_size=training_config.get("batch_size", 32),
+            learning_rate=training_config.get("learning_rate", 0.001),
+            early_stopping_patience=training_config.get("early_stopping_patience", 5)
+        )
 
-    def predict(self, input_data: Any, data_processor) -> Any:
+    def predict(self, model, input_data: Any) -> Any:
         """使用模型进行预测
         
         Args:
+            model: 模型实例
             input_data: 输入数据
-            data_processor: 数据处理器实例
             
         Returns:
             预测结果
@@ -67,7 +72,7 @@ class ModelCoreOperations:
             RuntimeError: 当预测失败时抛出
         """
         # 数据预处理
-        processed_data = data_processor.preprocess_data(input_data)
+        processed_data = self._data_service.preprocess_data(input_data)
         
         # 执行预测
         return self._model_service.predict(processed_data)
