@@ -32,7 +32,7 @@
 ### 安装步骤
 1. 克隆项目仓库
 ```bash
-git clone https://github.com/your-repo/llm-finetuning.git
+git clone https://github.com/shadow000902/llm-finetuning.git
 cd llm-finetuning
 ```
 
