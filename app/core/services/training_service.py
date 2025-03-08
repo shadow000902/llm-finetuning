@@ -65,8 +65,17 @@ class TrainingService(ITrainingService):
             
         Returns:
             Dict[str, Any]: 训练启动结果
+            
+        Raises:
+            ValueError: 当配置参数无效时抛出
+            RuntimeError: 当训练启动失败时抛出
         """
-        return self._training_impl.start_training(config)
+        try:
+            return self._training_impl.start_training(config)
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"启动训练失败: {str(e)}", exc_info=True)
+            raise RuntimeError(f"启动训练失败: {str(e)}")
 
     def stop_training(self) -> None:
         """停止训练任务"""

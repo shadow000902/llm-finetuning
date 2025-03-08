@@ -5,14 +5,22 @@ import time
 import uuid
 
 class DefaultTrainingService(ITrainingService):
-    """默认训练服务实现"""
+    """默认训练服务实现
+    
+    提供ITrainingService接口的基本实现，主要用于：
+    - 作为系统默认的训练服务实现
+    - 在没有配置具体训练服务时使用
+    - 提供最基本的训练功能
+    """
     
     def __init__(self):
+        """初始化默认训练服务"""
         self.training_config = {}
         self.training_status = {}
         self.training_metrics = {}
         self.is_training = False
         self.training_thread = None
+        self.logger = logging.getLogger(__name__)
     
     def start_training(self, config):
         """启动模型训练"""
@@ -102,4 +110,4 @@ class DefaultTrainingService(ITrainingService):
     def save_training_results(self, results, save_path):
         """保存训练结果"""
         # 实现结果保存逻辑
-        pass 
+        pass

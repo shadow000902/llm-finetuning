@@ -14,7 +14,18 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 class ConfigLoader:
-    """配置加载器类，用于加载和合并不同来源的配置"""
+    """配置加载器类，用于加载和合并不同来源的配置
+    
+    提供统一的配置加载机制，按照优先级加载不同来源的配置：
+    命令行参数 > 环境变量 > YAML配置文件 > 默认配置
+    
+    主要功能：
+    - 加载YAML配置文件
+    - 加载环境变量
+    - 加载命令行参数
+    - 合并不同来源的配置
+    - 配置验证
+    """
     
     def __init__(self, config_dir: str = "config"):
         """
@@ -25,6 +36,7 @@ class ConfigLoader:
         """
         self.config_dir = config_dir
         self.config = {}
+        self.env_prefix = "LLM_FINETUNE_"  # 环境变量前缀
     
     def load_yaml(self, filename: str) -> Dict[str, Any]:
         """
@@ -161,8 +173,13 @@ class ConfigLoader:
         if logging_config:
             self.config["logging"] = logging_config
         
+        # 加载训练配置
+        train_config = self.load_yaml("train_config.yaml")
+        if train_config:
+            self.config["training"] = self._deep_merge(train_config, self.config.get("training", {}))
+        
         # 加载环境变量
-        env_vars = self.load_env_vars()
+        env_vars = self.load_env_vars(self.env_prefix)
         self.config = self._deep_merge(env_vars, self.config)
         
         return self.config
@@ -215,4 +232,4 @@ def get_config(key: str, default: Any = None) -> Any:
     Returns:
         配置项值
     """
-    return config_loader.get(key, default) 
+    return config_loader.get(key, default)

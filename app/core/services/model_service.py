@@ -76,15 +76,37 @@ class ModelService(IModelOperations):
              batch_size: int = 32,
              learning_rate: float = 0.001,
              early_stopping_patience: int = 5) -> Dict[str, Any]:
-        """训练模型"""
-        return self._model_ops.train(
-            train_data=train_data,
-            val_data=val_data,
-            epochs=epochs,
-            batch_size=batch_size,
-            learning_rate=learning_rate,
-            early_stopping_patience=early_stopping_patience
-        )
+        """训练模型
+        
+        Args:
+            train_data: 训练数据
+            val_data: 验证数据
+            epochs: 训练轮数
+            batch_size: 批次大小
+            learning_rate: 学习率
+            early_stopping_patience: 早停耐心值
+            
+        Returns:
+            Dict[str, Any]: 训练结果
+            
+        Raises:
+            TrainingError: 训练过程中出现错误
+        """
+        try:
+            logger.info(f"开始模型训练，epochs={epochs}, batch_size={batch_size}, learning_rate={learning_rate}")
+            result = self._model_ops.train(
+                train_data=train_data,
+                val_data=val_data,
+                epochs=epochs,
+                batch_size=batch_size,
+                learning_rate=learning_rate,
+                early_stopping_patience=early_stopping_patience
+            )
+            logger.info(f"模型训练完成，结果: {result}")
+            return result
+        except Exception as e:
+            logger.error(f"模型训练失败: {str(e)}", exc_info=True)
+            raise TrainingError(f"模型训练失败: {str(e)}")
 
     def evaluate(self,
                 data: Union[torch.Tensor, Dict[str, torch.Tensor]],

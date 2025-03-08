@@ -69,30 +69,22 @@ class ServiceFactory:
         Returns:
             服务实例
         """
+        # 检查缓存中是否已存在实例
         if service_type in cls._instances:
             return cls._instances[service_type]
             
         try:
+            # 统一配置键名格式
             config_key = service_type.upper()
-            config = current_app.config.get(config_key)
+            # 尝试从应用配置中获取服务配置
+            config = current_app.config.get(config_key, {})
             
+            # 如果没有找到配置，使用默认实现
             if not config:
-                logger.warning(f"No configuration found for {config_key}, using defaults")
-                if service_class.__name__ == 'DataService':
-                    # 为DataService创建一个默认的处理器
-                    from app.core.processors.default_data_processor import DefaultDataProcessor
-                    return service_class(DefaultDataProcessor())
-                elif service_class.__name__ == 'ModelService':
-                    # 为ModelService创建一个默认的模型操作
-                    from app.core.processors.default_model_operations import DefaultModelOperations
-                    return service_class(DefaultModelOperations())
-                elif service_class.__name__ == 'TrainingService':
-                    # 为TrainingService创建一个默认的训练服务
-                    from app.core.processors.default_training_service import DefaultTrainingService
-                    return service_class(DefaultTrainingService())
-                else:
-                    # 对于其他服务类，尝试无参数初始化
-                    return service_class()
+                logger.warning(f"未找到{config_key}的配置，将使用默认实现")
+                instance = cls._create_default_service(service_class)
+                cls._instances[service_type] = instance
+                return instance
                 
             impl_class_path = None
             for key in ['impl', 'implementation', 'processor', 'model_ops', 'training_impl']:
@@ -102,30 +94,25 @@ class ServiceFactory:
                     
             if not impl_class_path:
                 logger.warning(f"No implementation class specified in {config_key}, using defaults")
-                if service_class.__name__ == 'DataService':
-                    # 为DataService创建一个默认的处理器
-                    from app.core.processors.default_data_processor import DefaultDataProcessor
-                    return service_class(DefaultDataProcessor())
-                elif service_class.__name__ == 'ModelService':
-                    # 为ModelService创建一个默认的模型操作
-                    from app.core.processors.default_model_operations import DefaultModelOperations
-                    return service_class(DefaultModelOperations())
-                elif service_class.__name__ == 'TrainingService':
-                    # 为TrainingService创建一个默认的训练服务
-                    from app.core.processors.default_training_service import DefaultTrainingService
-                    return service_class(DefaultTrainingService())
-                else:
-                    # 对于其他服务类，尝试无参数初始化
-                    return service_class()
+                instance = cls._create_default_service(service_class)
+                cls._instances[service_type] = instance
+                return instance
                 
-            impl_class = cls._import_class(impl_class_path)
-            instance = service_class(impl_class())
-            cls._instances[service_type] = instance
-            return instance
+            try:
+                impl_class = cls._import_class(impl_class_path)
+                instance = service_class(impl_class())
+                cls._instances[service_type] = instance
+                return instance
+            except Exception as e:
+                logger.error(f"导入实现类失败: {impl_class_path}, 错误: {str(e)}")
+                logger.info(f"将使用默认实现替代")
+                instance = cls._create_default_service(service_class)
+                cls._instances[service_type] = instance
+                return instance
             
         except Exception as e:
-            logger.error(f"Failed to create {service_type}: {str(e)}", exc_info=True)
-            raise ValueError(f"Failed to create {service_type}: {str(e)}")
+            logger.error(f"创建服务失败 {service_type}: {str(e)}", exc_info=True)
+            raise ValueError(f"创建服务失败 {service_type}: {str(e)}")
 
     @staticmethod
     def _import_class(class_path: str) -> Any:
@@ -144,3 +131,29 @@ class ServiceFactory:
         except (ImportError, AttributeError) as e:
             logger.error(f"Failed to import {class_path}: {str(e)}", exc_info=True)
             raise ImportError(f"Failed to import {class_path}: {str(e)}")
+            
+    @classmethod
+    def _create_default_service(cls, service_class: Any) -> Any:
+        """创建默认服务实例
+        
+        Args:
+            service_class: 服务类
+            
+        Returns:
+            默认服务实例
+        """
+        if service_class.__name__ == 'DataService':
+            # 为DataService创建一个默认的处理器
+            from app.core.processors.default_data_processor import DefaultDataProcessor
+            return service_class(DefaultDataProcessor())
+        elif service_class.__name__ == 'ModelService':
+            # 为ModelService创建一个默认的模型操作
+            from app.core.processors.default_model_operations import DefaultModelOperations
+            return service_class(DefaultModelOperations())
+        elif service_class.__name__ == 'TrainingService':
+            # 为TrainingService创建一个默认的训练服务
+            from app.core.processors.default_training_service import DefaultTrainingService
+            return service_class(DefaultTrainingService())
+        else:
+            # 对于其他服务类，尝试无参数初始化
+            return service_class()

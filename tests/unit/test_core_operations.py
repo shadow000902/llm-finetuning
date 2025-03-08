@@ -4,7 +4,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from app.model.core_operations import ModelCoreOperations
 from unittest.mock import Mock
-from app.core.interfaces.model_operations import IModelService, ITrainingService
+from app.core.interfaces.model_operations import IModelService
+from app.core.interfaces.training import ITrainingService
 from app.core.interfaces.data_processing import IDataProcessor
 
 class TestCoreOperations:

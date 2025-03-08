@@ -49,23 +49,7 @@ class IModelOperations(ABC):
         """文本生成"""
         pass
 
-class ITrainingService(ABC):
-    """训练服务接口，定义模型训练相关操作"""
-    @abstractmethod
-    def configure(self, config: Dict[str, Any]) -> None:
-        """配置训练参数"""
-        pass
-
-    @abstractmethod
-    def train(self,
-             train_data: Union[torch.Tensor, Dict[str, torch.Tensor]],
-             val_data: Optional[Union[torch.Tensor, Dict[str, torch.Tensor]]] = None,
-             epochs: int = 10,
-             batch_size: int = 32,
-             learning_rate: float = 0.001,
-             early_stopping_patience: int = 5) -> Dict[str, Any]:
-        """训练模型"""
-        pass
+# 移除重复定义的ITrainingService接口，因为它已经在training.py中定义
 
 class IModelService(ABC):
     """模型服务接口，定义模型操作的标准方法

@@ -28,14 +28,23 @@ def create_app(env: str = None):
         env = os.getenv('FLASK_ENV', 'development')
     
     # 加载配置
-    config = load_config(env)
-    
-    # 设置日志配置
-    setup_logging(
-        log_level=config.get('logging', {}).get('level', 'INFO'),
-        log_format=config.get('logging', {}).get('format'),
-        log_file=config.get('logging', {}).get('file') if config.get('logging', {}).get('to_file') else None
-    )
+    try:
+        from app.utils.config_loader import ConfigLoader
+        config_loader = ConfigLoader()
+        config = config_loader.load_config(env)
+        
+        # 设置日志配置
+        setup_logging(
+            log_level=config.get('logging', {}).get('level', 'INFO'),
+            log_format=config.get('logging', {}).get('format'),
+            log_file=config.get('logging', {}).get('file') if config.get('logging', {}).get('to_file') else None
+        )
+    except Exception as e:
+        # 确保即使配置加载失败，也能设置基本日志
+        setup_logging()
+        logger = logging.getLogger(__name__)
+        logger.error(f"配置加载失败: {str(e)}", exc_info=True)
+        config = {}
     
     logger = logging.getLogger(__name__)
     logger.info(f"创建应用实例，环境: {env}")
