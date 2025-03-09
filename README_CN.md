@@ -37,25 +37,25 @@
 
 1. 克隆项目仓库
 
-```bash
-git clone https://github.com/shadow000902/llm-finetuning.git
-cd llm-finetuning
-```
+    ```bash
+    git clone https://github.com/shadow000902/llm-finetuning.git
+    cd llm-finetuning
+    ```
 
 2. 创建虚拟环境
 
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或者
-venv\Scripts\activate  # Windows
-```
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # Linux/Mac
+    # 或者
+    venv\Scripts\activate  # Windows
+    ```
 
 3. 安装依赖
 
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 4. 配置环境变量
 复制.env.example文件为.env，并根据实际情况修改配置
