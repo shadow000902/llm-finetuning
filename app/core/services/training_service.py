@@ -1,4 +1,5 @@
 from typing import Any, Dict
+import logging
 from app.core.interfaces.training import ITrainingService
 
 class TrainingService(ITrainingService):
@@ -14,6 +15,7 @@ class TrainingService(ITrainingService):
             training_impl (ITrainingService): 具体的训练服务实现
         """
         self._training_impl = training_impl  # 具体的训练服务实现
+        self._trainer = training_impl  # 为了兼容测试用例
 
     def configure(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """配置训练参数（configure_training 的别名）
@@ -77,9 +79,13 @@ class TrainingService(ITrainingService):
             logger.error(f"启动训练失败: {str(e)}", exc_info=True)
             raise RuntimeError(f"启动训练失败: {str(e)}")
 
-    def stop_training(self) -> None:
-        """停止训练任务"""
-        self._training_impl.stop_training()
+    def stop_training(self) -> Dict[str, Any]:
+        """停止训练任务
+        
+        Returns:
+            Dict[str, Any]: 停止训练的结果
+        """
+        return self._training_impl.stop_training()
 
     def get_training_status(self) -> Dict[str, Any]:
         """获取训练状态
@@ -89,13 +95,16 @@ class TrainingService(ITrainingService):
         """
         return self._training_impl.get_training_status()
 
-    def save_checkpoint(self, path: str) -> None:
+    def save_checkpoint(self, path: str) -> Dict[str, Any]:
         """保存训练检查点
         
         Args:
             path: 检查点保存路径
+            
+        Returns:
+            Dict[str, Any]: 保存检查点的结果
         """
-        self._training_impl.save_checkpoint(path)
+        return self._training_impl.save_checkpoint(path)
 
     def load_checkpoint(self, path: str) -> Dict[str, Any]:
         """加载训练检查点
@@ -136,11 +145,14 @@ class TrainingService(ITrainingService):
         """
         return self._training_impl.monitor_training()
 
-    def save_training_results(self, results: Dict[str, Any], save_path: str) -> None:
+    def save_training_results(self, results: Dict[str, Any], save_path: str) -> Dict[str, Any]:
         """保存训练结果
         
         Args:
             results: 训练结果字典
             save_path: 保存路径
+            
+        Returns:
+            Dict[str, Any]: 保存结果的状态
         """
-        self._training_impl.save_training_results(results, save_path)
+        return self._training_impl.save_training_results(results, save_path)
