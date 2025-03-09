@@ -10,6 +10,33 @@ from app.model import ModelVersion, TrainingRecord, EvaluationRecord
 
 class ModelDAO:
     """模型数据访问对象，提供对模型相关表的CRUD操作"""
+
+    @staticmethod
+    def save_model_metadata(model_id: str, metadata: dict) -> bool:
+        """保存模型元数据"""
+        try:
+            # 这里应该添加保存元数据的实际逻辑
+            # 假设保存成功，返回True
+            return True
+        except Exception:
+            # 若保存失败，返回False
+            return False
+
+    @staticmethod
+    def get_model_metadata(model_id: str) -> dict:
+        """获取模型元数据"""
+        pass
+
+    @staticmethod
+    def update_model_status(model_id: str, status: str) -> bool:
+        """更新模型训练状态"""
+        try:
+            # 这里应该添加更新状态的实际逻辑
+            # 假设更新成功，返回True
+            return True
+        except Exception:
+            # 若更新失败，返回False
+            return False
     
     @staticmethod
     def create_model_version(version: str, path: str, description: Optional[str] = None, 

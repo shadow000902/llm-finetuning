@@ -25,12 +25,12 @@ from peft import (
 )
 from datasets import Dataset
 
-from app.core.interfaces.model_operations import ModelOperationsInterface
+from app.core.interfaces.model_operations import IModelOperations
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-class DeepSeekModel(ModelOperationsInterface):
+class DeepSeekModel(IModelOperations):
     """DeepSeek-R1 1.5B模型的实现类"""
     
     def __init__(self, model_path: str = "deepseek-ai/deepseek-llm-1.5b-base", device: str = None):
@@ -90,37 +90,48 @@ class DeepSeekModel(ModelOperationsInterface):
             logger.error(f"模型加载失败: {str(e)}")
             raise
             
-    def prepare_for_training(self, lora_config: Dict[str, Any] = None) -> None:
+    def tokenize_text(self, text: str) -> torch.Tensor:
+        """
+        对输入文本进行标记化
+        
+        Args:
+            text: 输入文本
+            
+        Returns:
+            标记化后的张量
+        """
+        if self.tokenizer is None:
+            raise ValueError("分词器尚未加载")
+            
+        return self.tokenizer.encode(text, return_tensors="pt").to(self.device)
+            
+    def prepare_for_training(self, config: Dict[str, Any] = None) -> None:
         """
         准备模型进行训练（应用LoRA等）
         
         Args:
-            lora_config: LoRA配置参数
+            config: 训练配置参数
         """
         if self.model is None:
             raise ValueError("模型尚未加载，请先调用load_model方法")
             
         logger.info("准备模型进行训练")
         
-        # 默认LoRA配置
-        default_lora_config = {
-            "r": 8,
-            "lora_alpha": 16,
-            "lora_dropout": 0.05,
+        # 从配置中提取LoRA参数
+        lora_config = {
+            "r": config.get("lora_r", 8),
+            "lora_alpha": config.get("lora_alpha", 16),
+            "lora_dropout": config.get("lora_dropout", 0.05),
             "bias": "none",
             "task_type": TaskType.CAUSAL_LM
         }
-        
-        # 合并用户提供的配置
-        if lora_config:
-            default_lora_config.update(lora_config)
             
         # 准备模型进行量化训练
         if getattr(self.model, "is_loaded_in_8bit", False) or getattr(self.model, "is_loaded_in_4bit", False):
             self.model = prepare_model_for_kbit_training(self.model)
             
         # 应用LoRA
-        peft_config = LoraConfig(**default_lora_config)
+        peft_config = LoraConfig(**lora_config)
         self.model = get_peft_model(self.model, peft_config)
         
         # 打印可训练参数信息
@@ -203,7 +214,7 @@ class DeepSeekModel(ModelOperationsInterface):
         logger.info(f"模型训练完成，指标: {metrics}")
         return metrics
         
-    def generate(
+    def generate_text(
         self, 
         prompt: str, 
         max_length: int = 100,
@@ -212,7 +223,7 @@ class DeepSeekModel(ModelOperationsInterface):
         top_k: int = 50,
         num_return_sequences: int = 1,
         **kwargs
-    ) -> List[str]:
+    ) -> str:
         """
         生成文本
         
@@ -226,7 +237,7 @@ class DeepSeekModel(ModelOperationsInterface):
             **kwargs: 其他生成参数
             
         Returns:
-            生成的文本列表
+            生成的文本
         """
         if self.model is None or self.tokenizer is None:
             raise ValueError("模型或分词器尚未加载")
@@ -255,7 +266,7 @@ class DeepSeekModel(ModelOperationsInterface):
         generated_texts = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
         
         logger.info(f"文本生成完成，生成了 {len(generated_texts)} 个序列")
-        return generated_texts
+        return generated_texts[0] if generated_texts else ""
         
     def save_model(self, output_dir: str) -> None:
         """
@@ -319,4 +330,4 @@ class DeepSeekModel(ModelOperationsInterface):
         metrics = evaluator.evaluate()
         
         logger.info(f"模型评估完成，指标: {metrics}")
-        return metrics 
+        return metrics

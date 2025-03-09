@@ -1,6 +1,7 @@
 from app.core.interfaces.data_processing import IDataProcessor
 import pandas as pd
 import numpy as np
+import logging
 from typing import Dict, Any
 
 class DefaultDataProcessor(IDataProcessor):

@@ -23,11 +23,43 @@ logger = logging.getLogger(__name__)
 
 # 模型训练服务类，继承自ModelCoreOperations
 class ModelTrainingService(ModelCoreOperations):
-    def __init__(self):
-        """初始化模型训练服务"""
-        super().__init__()
+    def __init__(self, model_service=None, training_service=None, data_service=None):
+        """初始化模型训练服务
+
+        Args:
+            model_service: 模型服务对象，用于处理模型相关操作。
+            training_service: 训练服务对象，用于处理训练相关操作。
+            data_service: 数据服务对象，用于处理数据相关操作。
+        """
+        super().__init__(model_service, training_service, data_service)
         self._monitoring = False  # 资源监控状态标志
         self._monitor_thread = None  # 资源监控线程
+        self.model_service = model_service
+        self.training_service = training_service
+        self.data_service = data_service
+        self.model = None
+        self.optimizer = None
+        self.scheduler = None
+        self.current_epoch = 0
+        self.loss = None
+
+    def initialize_training(self, model_config):
+        """初始化训练
+        
+        Args:
+            model_config: 模型配置字典
+            
+        Returns:
+            dict: 包含初始化状态的字典
+            
+        Raises:
+            ValueError: 当配置无效时抛出
+        """
+        super().initialize_model(model_config)
+        return {
+            'status': 'initialized',
+            'model_config': model_config
+        }
         
 
     def _cleanup_resources(self):
@@ -68,7 +100,7 @@ class ModelTrainingService(ModelCoreOperations):
         """
         self._monitoring = True
         self._monitor_thread = threading.Thread(
-            target=self._monitor_resources,  # 设置监控函数
+            target=self.get_resource_usage,  # 设置监控函数
             args=(metrics,),  # 传入监控指标字典
             daemon=True  # 设置为守护线程
         )
@@ -96,39 +128,178 @@ class ModelTrainingService(ModelCoreOperations):
         else:
             logger.info('Resource monitoring was not running')
 
-    def _monitor_resources(self, metrics):
-        """监控系统资源使用情况
+    def get_resource_usage(self, metrics=None):
+        """获取系统资源使用情况
         
         Args:
-            metrics (dict): 用于存储监控指标的字典
+            metrics (dict, optional): 用于存储监控指标的字典
+            
+        Returns:
+            dict: 包含当前资源使用情况的字典
         """
+        if metrics is None:
+            metrics = {
+                'cpu_usage': [],
+                'memory_usage': [],
+                'gpu_memory': [],
+                'throughput': []
+            }
+            
         try:
-            while self._monitoring:
-                # 收集CPU使用率
-                cpu_percent = psutil.cpu_percent(interval=1)
-                metrics['cpu_usage'].append(cpu_percent)
-                
-                # 收集内存使用情况
-                process = psutil.Process(os.getpid())
-                memory_info = process.memory_info()
-                metrics['memory_usage'].append(memory_info.rss / 1024 / 1024)  # 转换为MB
-                
-                # 如果GPU可用，收集GPU内存使用情况
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                    gpu_memory = torch.cuda.memory_allocated() / 1024 / 1024  # 转换为MB
-                    metrics['gpu_memory'].append(gpu_memory)
-                
-                # 计算训练吞吐量
-                if len(metrics['epoch_times']) > 0:
-                    throughput = len(metrics['loss']) / sum(metrics['epoch_times'])
-                    metrics['throughput'].append(throughput)
-                
-                # 休眠5秒以避免过度监控
-                time.sleep(5)
+            # 收集CPU使用率
+            cpu_percent = psutil.cpu_percent(interval=1)
+            metrics['cpu_usage'].append(cpu_percent)
+            
+            # 收集内存使用情况
+            process = psutil.Process(os.getpid())
+            memory_info = process.memory_info()
+            metrics['memory_usage'].append(memory_info.rss / 1024 / 1024)  # 转换为MB
+            
+            # 收集GPU内存使用情况
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
+                metrics['gpu_memory'].append({
+                    'allocated': torch.cuda.memory_allocated() / 1024 / 1024,  # 转换为MB
+                    'reserved': torch.cuda.memory_reserved() / 1024 / 1024,    # 转换为MB
+                    'cached': torch.cuda.memory_cached() / 1024 / 1024        # 转换为MB
+                })
+            else:
+                metrics['gpu_memory'].append(None)
+            
+            return metrics
+            
         except Exception as e:
             logger.error(f'Resource monitoring failed: {str(e)}')
-            self._monitoring = False
+            return {
+                'error': str(e),
+                'metrics': metrics
+            }
+
+    def save_checkpoint(self, checkpoint_path: str):
+        """保存训练检查点
+        
+        Args:
+            checkpoint_path (str): 检查点保存路径
+            
+        Returns:
+            dict: 包含保存结果的字典
+        """
+        try:
+            # 确保目录存在
+            os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+            
+            # 保存模型状态
+            checkpoint = {
+                'model_state_dict': self.model.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'scheduler_state_dict': self.scheduler.state_dict() if self.scheduler else None,
+                'epoch': self.current_epoch,
+                'loss': self.loss
+            }
+            torch.save(checkpoint, checkpoint_path)
+            logger.info(f"Saved checkpoint to {checkpoint_path}")
+            return {
+                'status': 'success',
+                'checkpoint_path': checkpoint_path,
+                'checkpoint': checkpoint
+            }
+        except Exception as e:
+            logger.error(f"Failed to save checkpoint: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+
+    def load_checkpoint(self, checkpoint_path: str):
+        """加载训练检查点
+        
+        Args:
+            checkpoint_path (str): 检查点路径
+            
+        Returns:
+            dict: 包含加载结果的字典
+        """
+        try:
+            checkpoint = torch.load(checkpoint_path)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.current_epoch = checkpoint['epoch']
+            self.loss = checkpoint['loss']
+            logger.info(f"Loaded checkpoint from {checkpoint_path}")
+            return {
+                'status': 'success',
+                'checkpoint_path': checkpoint_path,
+                'checkpoint': checkpoint
+            }
+        except Exception as e:
+            logger.error(f"Failed to load checkpoint: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+
+    def _validate(self, config: Dict):
+        """验证训练配置
+        
+        Args:
+            config (Dict): 训练配置字典
+            
+        Raises:
+            ValueError: 当配置无效时抛出
+        """
+        required_fields = [
+            'model.base_model',
+            'model.max_length',
+            'data.train_file',
+            'data.validation_file',
+            'model.num_epochs',
+            'model.batch_size',
+            'model.learning_rate'
+        ]
+        
+        for field in required_fields:
+            if not self._get_nested_value(config, field):
+                raise ValueError(f"Missing required configuration field: {field}")
+        
+        logger.info("Training configuration validated successfully")
+
+    def _get_nested_value(self, config: Dict, path: str):
+        """获取嵌套字典中的值
+        
+        Args:
+            config (Dict): 配置字典
+            path (str): 以点分隔的路径
+            
+        Returns:
+            Any: 找到的值，如果不存在则返回None
+        """
+        keys = path.split('.')
+        value = config
+        for key in keys:
+            value = value.get(key)
+            if value is None:
+                return None
+        return value
+
+    def _train_epoch(self, epoch, trainer):
+        """训练单个epoch
+        
+        Args:
+            epoch (int): 当前epoch编号
+            trainer: 训练器对象
+            
+        Returns:
+            dict: 包含epoch训练结果的字典
+        """
+        start_time = time.time()
+        train_result = trainer.train()
+        end_time = time.time()
+        
+        return {
+            'epoch': epoch,
+            'loss': train_result.loss,
+            'training_time': end_time - start_time
+        }
 
     def train_model(self, config_path: str, task_id: str = None):
         """训练模型的主要方法
