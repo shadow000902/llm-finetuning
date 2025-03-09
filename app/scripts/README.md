@@ -152,4 +152,4 @@ python -m app.scripts.evaluate_model \
 - `--max-samples`: 最大评估样本数，默认为 100
 - `--quantization`: 量化类型，可选值为 `int8` 或 `int4`
 - `--log-file`: 日志文件路径
-- `--log-level`: 日志级别，可选值为 `DEBUG`、`INFO`、`WARNING`、`ERROR`、`CRITICAL` 
+- `--log-level`: 日志级别，可选值为 `DEBUG`、`INFO`、`WARNING`、`ERROR`、`CRITICAL`

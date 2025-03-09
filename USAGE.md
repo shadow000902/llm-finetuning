@@ -123,7 +123,7 @@ python -m app.scripts.train_model \
 tensorboard --logdir models/checkpoints/sample
 ```
 
-## 模型推理
+## 模型推理步骤
 
 ### 1. 准备提示文本
 
@@ -219,6 +219,7 @@ curl -X POST http://localhost:5000/api/v1/generate \
 ### 1. 训练过程中出现OOM错误怎么办？
 
 可以尝试以下方法：
+
 - 减小batch size
 - 启用梯度检查点（gradient checkpointing）
 - 使用混合精度训练
@@ -231,6 +232,7 @@ curl -X POST http://localhost:5000/api/v1/generate \
 ### 3. 如何评估模型效果？
 
 可以使用以下指标：
+
 - 困惑度（Perplexity）
 - BLEU分数
 - 人工评估
@@ -238,6 +240,7 @@ curl -X POST http://localhost:5000/api/v1/generate \
 ### 4. 如何部署模型到生产环境？
 
 可以使用以下方法：
+
 - 使用Docker容器化部署
 - 使用云服务提供商的托管服务
 - 使用Kubernetes进行容器编排
@@ -247,4 +250,4 @@ curl -X POST http://localhost:5000/api/v1/generate \
 - [项目文档](README.md)
 - [API文档](docs/api.md)
 - [脚本使用说明](app/scripts/README.md)
-- [配置说明](docs/configuration.md) 
+- [配置说明](docs/configuration.md)
