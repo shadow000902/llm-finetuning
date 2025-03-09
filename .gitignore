@@ -12,3 +12,5 @@ __pycache__/
 *.log
 logs
 results
+htmlcov
+.coverage
