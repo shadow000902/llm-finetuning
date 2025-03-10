@@ -15,6 +15,7 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import pandas as pd
 from datasets import Dataset
+from transformers import AutoTokenizer
 
 # 设置日志
 logging.basicConfig(
@@ -62,7 +63,7 @@ def load_csv_data(file_path: str) -> pd.DataFrame:
         logger.error(f"加载数据失败: {str(e)}")
         raise
 
-def format_instruction_data(data: List[Dict[str, Any]], template: str = None) -> List[Dict[str, str]]:
+def format_instruction_data(data: List[Dict[str, Any]], template: str = None, tokenizer_name: str = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B") -> List[Dict[str, Any]]:
     """
     将指令数据格式化为模型训练所需的格式
     
@@ -93,7 +94,21 @@ def format_instruction_data(data: List[Dict[str, Any]], template: str = None) ->
                 response=item["response"]
             )
             
+            # 初始化tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+            
+            # 对文本进行编码
+            encoding = tokenizer(
+                text,
+                max_length=512,
+                truncation=True,
+                padding="max_length",
+                return_tensors="pt"
+            )
+            
             formatted_data.append({
+                "input_ids": encoding["input_ids"].squeeze().tolist(),
+                "attention_mask": encoding["attention_mask"].squeeze().tolist(),
                 "text": text,
                 "instruction": item["instruction"],
                 "response": item["response"]
@@ -184,8 +199,7 @@ def save_datasets(datasets: Dict[str, Dataset], output_dir: str) -> None:
     # 保存各部分数据集
     for split_name, dataset in datasets.items():
         if len(dataset) > 0:
-            split_dir = os.path.join(output_dir, split_name)
-            dataset.save_to_disk(split_dir)
+            dataset.save_to_disk(os.path.join(output_dir, split_name))
             logger.info(f"已保存 {split_name} 数据集: {len(dataset)} 条")
 
 def main():
@@ -199,6 +213,7 @@ def main():
     parser.add_argument("--val-ratio", type=float, default=0.1, help="验证集比例")
     parser.add_argument("--test-ratio", type=float, default=0.1, help="测试集比例")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
+    parser.add_argument("--tokenizer", type=str, default="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B", help="Tokenizer名称")
     
     args = parser.parse_args()
     
@@ -210,7 +225,7 @@ def main():
         data = df.to_dict("records")
     
     # 格式化数据
-    formatted_data = format_instruction_data(data, args.template)
+    formatted_data = format_instruction_data(data, args.template, args.tokenizer)
     
     # 创建数据集
     dataset = create_huggingface_dataset(formatted_data)
@@ -230,4 +245,4 @@ def main():
     logger.info("数据处理完成")
 
 if __name__ == "__main__":
-    main() 
+    main()

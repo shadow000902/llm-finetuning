@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 
-import jwt
-from flask import request, jsonify, current_app, g, render_template
+from jwt.api_jwt import PyJWT
+from flask import *
 from werkzeug.utils import secure_filename
 
 from app.api import bp
@@ -60,7 +60,7 @@ def token_required(f):
         try:
             # 使用配置中的JWT密钥
             jwt_secret = current_app.config['APP_CONFIG'].get('security', {}).get('jwt_secret_key', 'jwt-secret-key')
-            data = jwt.decode(token, jwt_secret, algorithms=['HS256'])
+            data = PyJWT.decode(token, jwt_secret, algorithms=['HS256'])
             g.user_id = data.get('user_id')
         except:
             return jsonify({'error': 'Token is invalid', 'code': 'UNAUTHORIZED'}), 401
@@ -529,6 +529,17 @@ def process_dataset():
 @bp.route('/login', methods=['POST'])
 def login():
     """用户认证"""
+    # 检查Content-Type是否为application/json
+    if request.content_type != 'application/json':
+        return jsonify({
+            'error': {
+                'code': 'UNSUPPORTED_MEDIA_TYPE',
+                'message': 'Content-Type must be application/json'
+            },
+            'timestamp': datetime.utcnow().isoformat(),
+            'request_id': str(uuid.uuid4())
+        }), 415
+        
     data = request.get_json()
     
     # 简单的用户验证逻辑，实际应用中应该查询数据库
@@ -550,10 +561,16 @@ def login():
         jwt_expires = current_app.config['APP_CONFIG'].get('security', {}).get('jwt_access_token_expires', 3600)
         
         # 生成令牌
-        token = jwt.encode({
+        # 使用PyJWT库的正确方式
+        payload = {
             'user_id': 1,
             'exp': datetime.utcnow() + timedelta(seconds=jwt_expires)
-        }, jwt_secret, algorithm='HS256')
+        }
+        token = PyJWT.encode(payload, jwt_secret, algorithm='HS256')
+        
+        # 如果token是bytes类型，转换为字符串
+        if isinstance(token, bytes):
+            token = token.decode('utf-8')
         
         return jsonify({
             'token': token,

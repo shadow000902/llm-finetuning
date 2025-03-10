@@ -6,6 +6,7 @@ DeepSeek-R1 1.5B模型实现
 
 import os
 import torch
+import numpy as np
 import logging
 from typing import Dict, List, Optional, Union, Any
 from transformers import (
@@ -59,8 +60,11 @@ class DeepSeekModel(IModelOperations):
         # 加载分词器
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
-            trust_remote_code=True
+            trust_remote_code=True,
+            padding_side='left'
         )
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
         
         # 设置模型加载参数
         model_kwargs = {
@@ -162,6 +166,45 @@ class DeepSeekModel(IModelOperations):
             
         logger.info("开始训练模型")
         
+        # 确保tokenizer配置正确
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = 'right'
+        
+        # 创建一个完全自定义的数据整理器，直接处理原始数据
+        def custom_data_collator(examples):
+            # 提取文本数据
+            texts = []
+            for example in examples:
+                if "text" in example:
+                    if isinstance(example["text"], str):
+                        texts.append(example["text"])
+                    elif isinstance(example["text"], list) and len(example["text"]) > 0:
+                        texts.append(example["text"][0] if isinstance(example["text"][0], str) else str(example["text"][0]))
+                    else:
+                        texts.append("")
+                else:
+                    # 如果没有text字段，尝试使用instruction和response构建文本
+                    instruction = example.get("instruction", "")
+                    response = example.get("response", "")
+                    if instruction and response:
+                        texts.append(f"### 指令:\n{instruction}\n\n### 回答:\n{response}")
+                    else:
+                        texts.append("")
+            
+            # 使用tokenizer处理文本
+            batch = self.tokenizer(
+                texts,
+                padding="max_length",
+                truncation=True,
+                max_length=512,
+                return_tensors="pt"
+            )
+            
+            # 添加labels字段
+            batch["labels"] = batch["input_ids"].clone()
+            
+            return batch
+        
         # 默认训练参数
         default_args = TrainingArguments(
             output_dir="./models/checkpoints",
@@ -177,16 +220,14 @@ class DeepSeekModel(IModelOperations):
             save_total_limit=3,
             load_best_model_at_end=True if eval_dataset else False,
             report_to="tensorboard",
+            remove_unused_columns=True,  # 允许删除未使用的列，因为我们的整理器会处理原始数据
         )
         
         # 使用用户提供的训练参数覆盖默认参数
         args = training_args or default_args
         
-        # 数据整理器
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=self.tokenizer,
-            mlm=False
-        )
+        # 使用自定义数据整理器
+        data_collator = custom_data_collator
         
         # 创建训练器
         trainer = Trainer(
@@ -331,3 +372,47 @@ class DeepSeekModel(IModelOperations):
         
         logger.info(f"模型评估完成，指标: {metrics}")
         return metrics
+
+    def predict(
+        self,
+        inputs: Union[torch.Tensor, Dict[str, torch.Tensor]],
+        batch_size: int = 32,
+        return_probs: bool = False
+    ) -> np.ndarray:
+        """
+        模型推理
+        
+        Args:
+            inputs: 输入数据，支持Tensor或字典格式
+            batch_size: 批次大小
+            return_probs: 是否返回概率分布
+            
+        Returns:
+            模型输出结果，numpy数组格式
+        """
+        if self.model is None or self.tokenizer is None:
+            raise ValueError("模型或分词器尚未加载")
+            
+        logger.info("开始模型推理")
+        
+        # 将输入转换为模型需要的格式
+        if isinstance(inputs, torch.Tensor):
+            inputs = {"input_ids": inputs}
+            
+        # 将数据移动到设备
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        # 推理
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+            
+        # 获取logits
+        logits = outputs.logits.cpu().numpy()
+        
+        if return_probs:
+            # 返回概率分布
+            probs = torch.softmax(torch.from_numpy(logits), dim=-1).numpy()
+            return probs
+        else:
+            # 返回logits
+            return logits

@@ -37,7 +37,7 @@ def main():
     
     # 确定运行参数
     host = args.host or config.get('app', {}).get('host', '0.0.0.0')
-    port = args.port or config.get('app', {}).get('port', 5000)
+    port = args.port or config.get('app', {}).get('port', 5001)
     debug = args.debug or config.get('app', {}).get('debug', False)
     
     # 启动Flask开发服务器

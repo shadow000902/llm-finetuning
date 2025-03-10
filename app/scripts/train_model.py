@@ -7,21 +7,24 @@
 该脚本用于启动模型训练
 """
 
+import argparse
+import json
+import logging
 import os
 import sys
-import argparse
-import logging
-import yaml
-from typing import Dict, Any
 from pathlib import Path
+from typing import Dict, Any
+
+import yaml
+from datasets import Dataset
+from transformers import TrainingArguments
 
 # 添加项目根目录到系统路径
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from app.model.implementations.deepseek_model import DeepSeekModel
-from app.core.services.model_components.model_training import ModelTrainer
 from app.utils.logging import setup_logging
-from datasets import load_from_disk
+
 
 def load_config(config_path: str) -> Dict[str, Any]:
     """
@@ -67,18 +70,11 @@ def main():
     output_dir = args.output_dir or config.get("output_dir", "./models/checkpoints")
     os.makedirs(output_dir, exist_ok=True)
     
-    # 加载数据集
-    logger.info(f"加载数据集: {args.data_dir}")
-    train_dataset = load_from_disk(os.path.join(args.data_dir, "train"))
-    
-    # 加载验证集（如果存在）
-    val_path = os.path.join(args.data_dir, "validation")
-    if os.path.exists(val_path):
-        val_dataset = load_from_disk(val_path)
-        logger.info(f"加载验证集: {len(val_dataset)} 条数据")
-    else:
-        val_dataset = None
-        logger.info("未找到验证集")
+    # 加载预处理后的数据集
+    logger.info(f"加载预处理数据集: {args.data_dir}")
+    train_dataset = Dataset.load_from_disk(os.path.join(args.data_dir, "train"))
+    val_dataset = Dataset.load_from_disk(os.path.join(args.data_dir, "validation"))
+    logger.info(f"加载验证集: {len(val_dataset)} 条数据")
     
     # 创建模型
     model_path = config.get("model", {}).get("base_model", "deepseek-ai/deepseek-llm-1.5b-base")
@@ -93,24 +89,25 @@ def main():
     # 准备LoRA训练
     lora_config = config.get("lora", {})
     logger.info(f"准备LoRA训练: {lora_config}")
-    model.prepare_for_training(lora_config=lora_config)
+    model.prepare_for_training(config={"lora": lora_config})
     
     # 设置训练参数
-    training_args = {
-        "output_dir": output_dir,
-        "per_device_train_batch_size": config.get("training", {}).get("batch_size", 8),
-        "gradient_accumulation_steps": config.get("training", {}).get("gradient_accumulation_steps", 1),
-        "num_train_epochs": config.get("training", {}).get("num_epochs", 3),
-        "learning_rate": config.get("training", {}).get("learning_rate", 3e-4),
-        "fp16": config.get("training", {}).get("fp16", True),
-        "logging_steps": config.get("training", {}).get("logging_steps", 100),
-        "save_steps": config.get("training", {}).get("save_steps", 1000),
-        "evaluation_strategy": "steps" if val_dataset else "no",
-        "eval_steps": config.get("training", {}).get("eval_steps", 500) if val_dataset else None,
-        "save_total_limit": config.get("training", {}).get("save_total_limit", 3),
-        "load_best_model_at_end": config.get("training", {}).get("load_best_model_at_end", True) if val_dataset else False,
-        "report_to": config.get("training", {}).get("report_to", "tensorboard"),
-    }
+    training_args = TrainingArguments(
+        output_dir=output_dir,
+        per_device_train_batch_size=config.get("training", {}).get("batch_size", 8),
+        gradient_accumulation_steps=config.get("training", {}).get("gradient_accumulation_steps", 1),
+        num_train_epochs=config.get("training", {}).get("num_epochs", 3),
+        learning_rate=config.get("training", {}).get("learning_rate", 3e-4),
+        fp16=config.get("training", {}).get("fp16", True),
+        logging_steps=config.get("training", {}).get("logging_steps", 100),
+        save_steps=config.get("training", {}).get("save_steps", 1000),
+        evaluation_strategy="steps" if val_dataset else "no",
+        eval_steps=config.get("training", {}).get("eval_steps", 500) if val_dataset else None,
+        save_total_limit=config.get("training", {}).get("save_total_limit", 3),
+        load_best_model_at_end=config.get("training", {}).get("load_best_model_at_end", True) if val_dataset else False,
+        report_to=config.get("training", {}).get("report_to", "tensorboard"),
+        remove_unused_columns=False
+    )
     
     # 开始训练
     logger.info("开始训练模型")
@@ -130,4 +127,4 @@ def main():
     logger.info("模型训练和保存完成")
 
 if __name__ == "__main__":
-    main() 
+    main()

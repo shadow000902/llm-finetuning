@@ -97,6 +97,10 @@ def init_extensions(app):
     from app.extensions import db
     db.init_app(app)  # 初始化数据库扩展
     
+    # 初始化Swagger文档
+    from app.swagger import setup_swagger
+    setup_swagger(app)
+    
     # 初始化其他扩展
     # 如果需要使用Flask-JWT-Extended
     try:
